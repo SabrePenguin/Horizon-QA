@@ -1,5 +1,7 @@
 package com.gtnewhorizons.gametest;
 
+import com.gtnewhorizons.gametest.world.GameTestWorldType;
+
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -14,6 +16,16 @@ public class CommonProxy {
 
         GameTestMod.LOG.info(Config.greeting);
         GameTestMod.LOG.info("I am GTNH GameTest at version " + Tags.VERSION);
+        GameTestMod.LOG.info(
+            "GameTest mode (-D{}): {}",
+            GameTestJvmFlags.PROPERTY,
+            GameTestJvmFlags.isEnabled());
+        if (GameTestJvmFlags.isEnabled()) {
+            GameTestMod.LOG.info(
+                "Void world registered as '{}' (Forge id {}).",
+                GameTestWorldType.INSTANCE.getWorldTypeName(),
+                GameTestWorldType.INSTANCE.getWorldTypeID());
+        }
     }
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
