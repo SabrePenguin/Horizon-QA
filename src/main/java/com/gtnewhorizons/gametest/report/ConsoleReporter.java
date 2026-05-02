@@ -1,0 +1,80 @@
+package com.gtnewhorizons.gametest.report;
+
+import java.util.List;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.gtnewhorizons.gametest.core.GameTestInstance;
+import com.gtnewhorizons.gametest.core.GameTestStatus;
+
+/**
+ * Writes a human-readable, per-test summary of all results to the server log.
+ *
+ * <p>One line per test: {@code [PASS]}, {@code [FAIL]}, or {@code [TIME]} (timed-out). Failed tests
+ * include the assertion message. A footer line shows totals.
+ */
+public final class ConsoleReporter {
+
+    private static final Logger LOG = LogManager.getLogger("GameTest");
+
+    private ConsoleReporter() {}
+
+    /** Log a full test-run summary for {@code instances}. */
+    public static void report(List<GameTestInstance> instances) {
+        int passed = 0, failed = 0, timedOut = 0, other = 0;
+        for (GameTestInstance inst : instances) {
+            switch (inst.getStatus()) {
+                case PASSED:
+                    passed++;
+                    break;
+                case FAILED:
+                    failed++;
+                    break;
+                case TIMED_OUT:
+                    timedOut++;
+                    break;
+                default:
+                    other++;
+                    break;
+            }
+        }
+
+        LOG.info("=======================================================");
+        LOG.info("  GameTest Results");
+        LOG.info("-------------------------------------------------------");
+        for (GameTestInstance inst : instances) {
+            String id = inst.getDefinition()
+                .getTestId();
+            GameTestStatus status = inst.getStatus();
+            switch (status) {
+                case PASSED:
+                    LOG.info("  [PASS] {}", id);
+                    break;
+                case FAILED: {
+                    Throwable cause = inst.getFailureCause();
+                    String detail = cause != null ? cause.getMessage() : "unknown failure";
+                    LOG.error("  [FAIL] {} — {}", id, detail);
+                    break;
+                }
+                case TIMED_OUT:
+                    LOG.error("  [TIME] {} (timed out after {} ticks)", id, inst.getTickCount());
+                    break;
+                default:
+                    LOG.warn("  [SKIP] {} (did not complete, status: {})", id, status);
+                    break;
+            }
+        }
+        LOG.info("-------------------------------------------------------");
+        LOG.info("  {} passed  {} failed  {} timed out", passed, failed, timedOut);
+        if (other > 0) {
+            LOG.warn("  {} test(s) did not complete", other);
+        }
+        if (failed + timedOut == 0) {
+            LOG.info("  RUN PASSED");
+        } else {
+            LOG.error("  RUN FAILED");
+        }
+        LOG.info("=======================================================");
+    }
+}

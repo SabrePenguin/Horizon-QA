@@ -1,5 +1,6 @@
 package com.gtnewhorizons.gametest.core;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -14,7 +15,12 @@ import net.minecraft.world.WorldServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import cpw.mods.fml.common.FMLCommonHandler;
+
+import com.gtnewhorizons.gametest.GameTestJvmFlags;
 import com.gtnewhorizons.gametest.GameTestMod;
+import com.gtnewhorizons.gametest.report.ConsoleReporter;
+import com.gtnewhorizons.gametest.report.JUnitXmlReporter;
 import com.gtnewhorizons.gametest.structure.HybridStructureLoader;
 import com.gtnewhorizons.gametest.structure.HybridStructureTemplate;
 import com.gtnewhorizons.gametest.structure.StructurePlacer;
@@ -115,7 +121,6 @@ public class GameTestBatchRunner {
         }
 
         runner.run(batchInstances, () -> {
-            logBatchResults(batchInstances);
             invokeMethods(batch.afterMethods, "AfterBatch");
             int next = idx + 1;
             if (next < batches.size()) {
@@ -130,31 +135,23 @@ public class GameTestBatchRunner {
         runner.unregister();
         GameTestMod.CHUNK_LOADER.releaseAll();
 
-        long passed = 0, failed = 0, timedOut = 0;
-        for (GameTestInstance inst : allInstances) {
-            switch (inst.getStatus()) {
-                case PASSED:
-                    passed++;
-                    break;
-                case FAILED:
-                    failed++;
-                    break;
-                case TIMED_OUT:
-                    timedOut++;
-                    break;
-                default:
-                    break;
-            }
+        ConsoleReporter.report(allInstances);
+
+        File reportFile = new File(".", "TEST-gametest.xml");
+        try {
+            JUnitXmlReporter.write(allInstances, reportFile);
+            LOG.info("JUnit XML report written to {}", reportFile.getAbsolutePath());
+        } catch (IOException e) {
+            LOG.error("Failed to write JUnit XML report: {}", e.getMessage());
         }
 
-        LOG.info("======================================================");
-        LOG.info(" RESULTS: {} passed  {} failed  {} timed out", passed, failed, timedOut);
-        if (failed + timedOut > 0) {
-            LOG.error(" RUN FAILED - {} required test(s) did not pass.", countRequiredFailures());
-        } else {
-            LOG.info(" RUN PASSED");
+        if (GameTestJvmFlags.isEnabled()) {
+            long requiredFailures = countRequiredFailures();
+            // Cap at 127 so the value is a valid Unix exit code.
+            int exitCode = (int) Math.min(requiredFailures, 127);
+            LOG.info("CI mode: exiting with code {} ({} required test(s) failed).", exitCode, requiredFailures);
+            FMLCommonHandler.instance().exitJava(exitCode, false);
         }
-        LOG.info("======================================================");
     }
 
     private long countRequiredFailures() {
@@ -166,21 +163,6 @@ public class GameTestBatchRunner {
             }
         }
         return count;
-    }
-
-    private static void logBatchResults(List<GameTestInstance> instances) {
-        for (GameTestInstance inst : instances) {
-            GameTestStatus status = inst.getStatus();
-            if (status == GameTestStatus.FAILED || status == GameTestStatus.TIMED_OUT) {
-                Throwable cause = inst.getFailureCause();
-                String detail = cause != null ? cause.getMessage() : status.name();
-                LOG.error(
-                    "FAIL {} - {}",
-                    inst.getDefinition()
-                        .getTestId(),
-                    detail);
-            }
-        }
     }
 
     private static void invokeMethods(List<Method> methods, String phase) {
