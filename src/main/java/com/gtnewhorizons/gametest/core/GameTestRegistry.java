@@ -139,10 +139,7 @@ public final class GameTestRegistry {
 
     private static boolean validateTestMethod(Method method, Class<?> clazz) {
         if (!Modifier.isStatic(method.getModifiers())) {
-            LOG.warn(
-                "Skipping @GameTest method '{}' in '{}': must be static.",
-                method.getName(),
-                clazz.getName());
+            LOG.warn("Skipping @GameTest method '{}' in '{}': must be static.", method.getName(), clazz.getName());
             return false;
         }
         Class<?>[] params = method.getParameterTypes();

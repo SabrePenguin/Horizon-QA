@@ -1,6 +1,9 @@
 package com.gtnewhorizons.gametest.core;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 import net.minecraft.world.WorldServer;
 
@@ -27,6 +30,7 @@ public class GameTestInstance {
     private int tickCount = 0;
     private Throwable failureCause;
     private GameTestSequence sequence;
+    private final List<DelayedAction> delayedActions = new ArrayList<>();
 
     public GameTestInstance(GameTestDefinition definition, int originX, int originY, int originZ) {
         this.definition = definition;
@@ -65,6 +69,21 @@ public class GameTestInstance {
             LOG.warn("TIMEOUT  {} (timed out after {} ticks)", definition.getTestId(), tickCount);
             return;
         }
+        // Process delayed actions (e.g. redstone pulses)
+        Iterator<DelayedAction> it = delayedActions.iterator();
+        while (it.hasNext()) {
+            DelayedAction action = it.next();
+            if (tickCount >= action.triggerTick) {
+                try {
+                    action.action.run();
+                } catch (Throwable t) {
+                    fail(t);
+                    return;
+                }
+                it.remove();
+            }
+        }
+
         if (sequence != null) {
             try {
                 sequence.tick(tickCount);
@@ -74,6 +93,14 @@ public class GameTestInstance {
                 fail(t);
             }
         }
+    }
+
+    /**
+     * Schedule an action to run after {@code delayTicks} from the current tick count.
+     * Used by helpers like {@link com.gtnewhorizons.gametest.api.GameTestHelper#pulseRedstone}.
+     */
+    public void scheduleDelayed(int delayTicks, Runnable action) {
+        delayedActions.add(new DelayedAction(tickCount + delayTicks, action));
     }
 
     // -------------------------------------------------------------------------
@@ -139,5 +166,20 @@ public class GameTestInstance {
 
     public int getTickCount() {
         return tickCount;
+    }
+
+    // -------------------------------------------------------------------------
+    // Inner types
+    // -------------------------------------------------------------------------
+
+    private static final class DelayedAction {
+
+        final int triggerTick;
+        final Runnable action;
+
+        DelayedAction(int triggerTick, Runnable action) {
+            this.triggerTick = triggerTick;
+            this.action = action;
+        }
     }
 }

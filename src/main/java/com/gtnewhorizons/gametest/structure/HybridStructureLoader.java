@@ -124,12 +124,13 @@ public final class HybridStructureLoader {
 
                 if (key == HybridStructureTemplate.AIR_KEY) {
                     throw new IOException(
-                        "Template '" + templateName + "' palette must not use reserved air key '"
-                            + HybridStructureTemplate.AIR_KEY + "'");
+                        "Template '" + templateName
+                            + "' palette must not use reserved air key '"
+                            + HybridStructureTemplate.AIR_KEY
+                            + "'");
                 }
                 if (keyToIndex.containsKey(key)) {
-                    throw new IOException(
-                        "Template '" + templateName + "' has duplicate palette key '" + key + "'");
+                    throw new IOException("Template '" + templateName + "' has duplicate palette key '" + key + "'");
                 }
 
                 JsonObject val = entry.getValue()
@@ -162,7 +163,11 @@ public final class HybridStructureLoader {
             JsonArray layersArr = root.getAsJsonArray("layers");
             if (layersArr.size() != sizeY) {
                 throw new IOException(
-                    "Template '" + templateName + "' declares size Y=" + sizeY + " but has " + layersArr.size()
+                    "Template '" + templateName
+                        + "' declares size Y="
+                        + sizeY
+                        + " but has "
+                        + layersArr.size()
                         + " layers");
             }
 
@@ -173,24 +178,44 @@ public final class HybridStructureLoader {
                     .getAsJsonArray();
                 if (layer.size() != sizeZ) {
                     throw new IOException(
-                        "Template '" + templateName + "' layer y=" + y + " has " + layer.size()
-                            + " rows but size Z=" + sizeZ);
+                        "Template '" + templateName
+                            + "' layer y="
+                            + y
+                            + " has "
+                            + layer.size()
+                            + " rows but size Z="
+                            + sizeZ);
                 }
                 for (int z = 0; z < sizeZ; z++) {
                     String row = layer.get(z)
                         .getAsString();
                     if (row.length() != sizeX) {
                         throw new IOException(
-                            "Template '" + templateName + "' layer y=" + y + " row z=" + z + " has length "
-                                + row.length() + " but size X=" + sizeX);
+                            "Template '" + templateName
+                                + "' layer y="
+                                + y
+                                + " row z="
+                                + z
+                                + " has length "
+                                + row.length()
+                                + " but size X="
+                                + sizeX);
                     }
                     for (int x = 0; x < sizeX; x++) {
                         char c = row.charAt(x);
                         Integer idx = keyToIndex.get(c);
                         if (idx == null) {
                             throw new IOException(
-                                "Unknown palette key '" + c + "' at (" + x + "," + y + "," + z + ") in template '"
-                                    + templateName + "'");
+                                "Unknown palette key '" + c
+                                    + "' at ("
+                                    + x
+                                    + ","
+                                    + y
+                                    + ","
+                                    + z
+                                    + ") in template '"
+                                    + templateName
+                                    + "'");
                         }
                         blockData[x][y][z] = idx;
                     }

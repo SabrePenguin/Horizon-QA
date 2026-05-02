@@ -118,7 +118,8 @@ public final class StructureExporter {
         // ---- Phase 2: Build sorted palette with character key assignments ----
         if (uniqueBlocks.size() > KEY_SEQUENCE.length()) {
             throw new IOException(
-                "Structure contains " + uniqueBlocks.size() + " unique block types, exceeding the maximum of "
+                "Structure contains " + uniqueBlocks.size()
+                    + " unique block types, exceeding the maximum of "
                     + KEY_SEQUENCE.length());
         }
 
@@ -129,7 +130,8 @@ public final class StructureExporter {
         keys[0] = HybridStructureTemplate.AIR_KEY;
 
         // Parallel lists for palette entries (excluding air)
-        List<char[]> palEntries = new ArrayList<>(); // each: {charKey} + name + metaStr + label (encoded in arrays below)
+        List<char[]> palEntries = new ArrayList<>(); // each: {charKey} + name + metaStr + label (encoded in arrays
+                                                     // below)
         List<String> palNames = new ArrayList<>();
         List<Integer> palMetas = new ArrayList<>();
         List<String> palLabels = new ArrayList<>();
@@ -232,7 +234,8 @@ public final class StructureExporter {
             ItemStack stack = new ItemStack(block, 1, meta);
             if (stack.getItem() != null) {
                 String displayName = stack.getDisplayName();
-                if (displayName != null && !displayName.isEmpty() && !displayName.startsWith("tile.")
+                if (displayName != null && !displayName.isEmpty()
+                    && !displayName.startsWith("tile.")
                     && !displayName.startsWith("item.")) {
                     return displayName;
                 }
