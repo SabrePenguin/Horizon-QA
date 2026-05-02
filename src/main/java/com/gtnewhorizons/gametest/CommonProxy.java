@@ -12,8 +12,8 @@ public class CommonProxy {
     public void preInit(FMLPreInitializationEvent event) {
         Config.synchronizeConfiguration(event.getSuggestedConfigurationFile());
 
-        MyMod.LOG.info(Config.greeting);
-        MyMod.LOG.info("I am GTNH GameTest at version " + Tags.VERSION);
+        GameTestMod.LOG.info(Config.greeting);
+        GameTestMod.LOG.info("I am GTNH GameTest at version " + Tags.VERSION);
     }
 
     // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
