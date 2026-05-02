@@ -9,8 +9,6 @@ import com.gtnewhorizons.gametest.core.GameTestRegistry;
 import com.gtnewhorizons.gametest.item.ItemGameTestWand;
 import com.gtnewhorizons.gametest.visual.SelectionBoxRenderer;
 import com.gtnewhorizons.gametest.world.GameTestWorldType;
-
-import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -42,10 +40,8 @@ public class CommonProxy {
         ItemGameTestWand.INSTANCE = new ItemGameTestWand();
         GameRegistry.registerItem(ItemGameTestWand.INSTANCE, "gametest_wand");
 
-        // Register wand event handler: left-click intercept (Forge bus) + particle rendering (FML bus)
-        SelectionBoxRenderer wandHandler = new SelectionBoxRenderer();
-        MinecraftForge.EVENT_BUS.register(wandHandler);
-        FMLCommonHandler.instance().bus().register(wandHandler);
+        // Wand left-click intercept (Forge bus). Outline drawing is client-side — see ClientProxy.init.
+        MinecraftForge.EVENT_BUS.register(new SelectionBoxRenderer());
     }
 
     public void init(FMLInitializationEvent event) {}
