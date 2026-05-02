@@ -1,5 +1,6 @@
 package com.gtnewhorizons.gametest.core;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -13,13 +14,20 @@ import net.minecraft.world.WorldServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.gtnewhorizons.gametest.GameTestMod;
+import com.gtnewhorizons.gametest.structure.HybridStructureLoader;
+import com.gtnewhorizons.gametest.structure.HybridStructureTemplate;
+import com.gtnewhorizons.gametest.structure.StructurePlacer;
+
 /**
- * Orchestrates sequential batch execution: for each batch, calls {@code @BeforeBatch} methods, runs
- * all tests in the batch via {@link GameTestRunner}, then calls {@code @AfterBatch} methods.
+ * Orchestrates sequential batch execution: for each batch, calls {@code @BeforeBatch} methods,
+ * loads and places any structure templates, runs all tests in the batch via {@link GameTestRunner},
+ * then calls {@code @AfterBatch} methods.
  *
  * <p>
  * The {@link GameTestRunner} tick loop is registered once in {@link #start()} and unregistered
- * when the final batch completes.
+ * when the final batch completes. Chunk tickets for all active cells are released at that point via
+ * {@link GameTestChunkLoader#releaseAll()}.
  */
 public class GameTestBatchRunner {
 
@@ -49,21 +57,57 @@ public class GameTestBatchRunner {
 
     private void runBatch(int idx) {
         Batch batch = batches.get(idx);
-        LOG.info("[GameTest] --- Batch '{}' ({} test(s)) ---", batch.name, batch.tests.size());
+        LOG.info("--- Batch '{}' ({} test(s)) ---", batch.name, batch.tests.size());
 
         invokeMethods(batch.beforeMethods, "BeforeBatch");
 
         WorldServer world = MinecraftServer.getServer()
             .worldServerForDimension(0);
         if (world == null) {
-            LOG.error("[GameTest] World dimension 0 is null - cannot start tests.");
+            LOG.error("World dimension 0 is null - cannot start tests.");
             onAllBatchesDone();
             return;
         }
 
         List<GameTestInstance> batchInstances = new ArrayList<>();
         for (GameTestDefinition def : batch.tests) {
-            int[] origin = grid.allocateOrigin();
+
+            // Load structure template (if the test specifies one)
+            HybridStructureTemplate template = null;
+            if (!def.getTemplateName()
+                .isEmpty()) {
+                try {
+                    template = HybridStructureLoader.load(def.getTemplateName());
+                } catch (IOException e) {
+                    LOG.error(
+                        "Failed to load template '{}' for test '{}' — test will run without a structure: {}",
+                        def.getTemplateName(),
+                        def.getTestId(),
+                        e.getMessage());
+                }
+            }
+
+            // Allocate a cell sized to the template (or the default minimum)
+            int templateSizeX = template != null ? template.getSizeX() : 0;
+            int templateSizeZ = template != null ? template.getSizeZ() : 0;
+            int[] origin = grid.allocateOrigin(templateSizeX, templateSizeZ);
+
+            // Force-load all chunks that the cell intersects
+            int templateSizeY = template != null ? template.getSizeY() : 0;
+            GameTestMod.CHUNK_LOADER.forceChunks(
+                world,
+                origin[0],
+                origin[1],
+                origin[2],
+                origin[0] + Math.max(templateSizeX, GameTestGridLayout.MIN_CELL_SIZE) - 1,
+                origin[1] + Math.max(templateSizeY, 1) - 1,
+                origin[2] + Math.max(templateSizeZ, GameTestGridLayout.MIN_CELL_SIZE) - 1);
+
+            // Place the structure before the test method is invoked
+            if (template != null) {
+                StructurePlacer.place(template, world, origin[0], origin[1], origin[2]);
+            }
+
             GameTestInstance inst = new GameTestInstance(def, origin[0], origin[1], origin[2]);
             inst.start(world);
             batchInstances.add(inst);
@@ -84,6 +128,7 @@ public class GameTestBatchRunner {
 
     private void onAllBatchesDone() {
         runner.unregister();
+        GameTestMod.CHUNK_LOADER.releaseAll();
 
         long passed = 0, failed = 0, timedOut = 0;
         for (GameTestInstance inst : allInstances) {
@@ -103,11 +148,11 @@ public class GameTestBatchRunner {
         }
 
         LOG.info("======================================================");
-        LOG.info("[GameTest]  RESULTS: {} passed  {} failed  {} timed out", passed, failed, timedOut);
+        LOG.info(" RESULTS: {} passed  {} failed  {} timed out", passed, failed, timedOut);
         if (failed + timedOut > 0) {
-            LOG.error("[GameTest]  RUN FAILED - {} required test(s) did not pass.", countRequiredFailures());
+            LOG.error(" RUN FAILED - {} required test(s) did not pass.", countRequiredFailures());
         } else {
-            LOG.info("[GameTest]  RUN PASSED");
+            LOG.info(" RUN PASSED");
         }
         LOG.info("======================================================");
     }
@@ -130,7 +175,7 @@ public class GameTestBatchRunner {
                 Throwable cause = inst.getFailureCause();
                 String detail = cause != null ? cause.getMessage() : status.name();
                 LOG.error(
-                    "[GameTest] FAIL {} - {}",
+                    "FAIL {} - {}",
                     inst.getDefinition()
                         .getTestId(),
                     detail);
@@ -144,13 +189,13 @@ public class GameTestBatchRunner {
                 m.invoke(null);
             } catch (InvocationTargetException e) {
                 LOG.error(
-                    "[GameTest] Exception in @{} method '{}': {}",
+                    "Exception in @{} method '{}': {}",
                     phase,
                     m.getName(),
                     e.getCause() != null ? e.getCause()
                         .getMessage() : e.getMessage());
             } catch (IllegalAccessException e) {
-                LOG.error("[GameTest] Cannot access @{} method '{}': {}", phase, m.getName(), e.getMessage());
+                LOG.error("Cannot access @{} method '{}': {}", phase, m.getName(), e.getMessage());
             }
         }
     }

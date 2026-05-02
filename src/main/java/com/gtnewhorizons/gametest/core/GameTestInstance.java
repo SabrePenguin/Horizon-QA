@@ -62,7 +62,7 @@ public class GameTestInstance {
         tickCount++;
         if (tickCount > definition.getTimeoutTicks()) {
             status = GameTestStatus.TIMED_OUT;
-            LOG.warn("[GameTest] TIMEOUT  {} (timed out after {} ticks)", definition.getTestId(), tickCount);
+            LOG.warn("TIMEOUT  {} (timed out after {} ticks)", definition.getTestId(), tickCount);
             return;
         }
         if (sequence != null) {
@@ -83,7 +83,7 @@ public class GameTestInstance {
     public void succeed() {
         if (status != GameTestStatus.RUNNING) return;
         status = GameTestStatus.PASSED;
-        LOG.info("[GameTest] PASSED   {}", definition.getTestId());
+        LOG.info("PASSED   {}", definition.getTestId());
     }
 
     public void fail(String message) {
@@ -95,9 +95,9 @@ public class GameTestInstance {
         status = GameTestStatus.FAILED;
         failureCause = cause;
         String detail = cause != null ? cause.getMessage() : "unknown";
-        LOG.error("[GameTest] FAILED   {} - {}", definition.getTestId(), detail);
+        LOG.error("FAILED   {} - {}", definition.getTestId(), detail);
         if (cause != null && !(cause instanceof GameTestAssertException)) {
-            LOG.error("[GameTest] Caused by:", cause);
+            LOG.error("Caused by:", cause);
         }
     }
 

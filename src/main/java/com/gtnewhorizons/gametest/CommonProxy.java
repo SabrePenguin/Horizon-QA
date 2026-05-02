@@ -1,5 +1,7 @@
 package com.gtnewhorizons.gametest;
 
+import net.minecraftforge.common.ForgeChunkManager;
+
 import com.gtnewhorizons.gametest.core.GameTestBatchRunner;
 import com.gtnewhorizons.gametest.core.GameTestRegistry;
 import com.gtnewhorizons.gametest.world.GameTestWorldType;
@@ -24,6 +26,9 @@ public class CommonProxy {
                 GameTestWorldType.INSTANCE.getWorldTypeID());
         }
 
+        // Register the chunk-loader callback so Forge knows how to handle persisted tickets.
+        ForgeChunkManager.setForcedChunkLoadingCallback(GameTestMod.instance, GameTestMod.CHUNK_LOADER);
+
         // Store the ASM data table so GameTestRegistry can use it during serverStarting
         GameTestRegistry.setAsmData(event.getAsmData());
     }
@@ -35,17 +40,17 @@ public class CommonProxy {
     public void serverStarting(FMLServerStartingEvent event) {
         if (!GameTestJvmFlags.isEnabled()) return;
 
-        GameTestMod.LOG.info("[GameTest] Discovering tests...");
+        GameTestMod.LOG.info("Discovering tests...");
         GameTestRegistry.discoverTests();
 
         if (GameTestRegistry.getAllTests()
             .isEmpty()) {
-            GameTestMod.LOG.warn("[GameTest] No tests found. Nothing to run.");
+            GameTestMod.LOG.warn("No tests found. Nothing to run.");
             return;
         }
 
         GameTestMod.LOG.info(
-            "[GameTest] Starting {} test(s).",
+            "Starting {} test(s).",
             GameTestRegistry.getAllTests()
                 .size());
         GameTestBatchRunner batchRunner = new GameTestBatchRunner(

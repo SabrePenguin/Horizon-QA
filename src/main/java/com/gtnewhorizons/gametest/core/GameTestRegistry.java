@@ -52,14 +52,14 @@ public final class GameTestRegistry {
         AFTER_BATCH_METHODS.clear();
 
         if (asmData == null) {
-            LOG.error("[GameTest] ASMDataTable not set - cannot discover tests.");
+            LOG.error("ASMDataTable not set - cannot discover tests.");
             return;
         }
 
         // GTNH FML stores annotation class names with dots (Type.getClassName() format)
         Set<ASMDataTable.ASMData> holderAnnotations = asmData.getAll(GameTestHolder.class.getName());
         if (holderAnnotations == null || holderAnnotations.isEmpty()) {
-            LOG.info("[GameTest] No @GameTestHolder classes found.");
+            LOG.info("No @GameTestHolder classes found.");
             return;
         }
 
@@ -69,12 +69,12 @@ public final class GameTestRegistry {
                 Class<?> holderClass = Class.forName(className, false, GameTestRegistry.class.getClassLoader());
                 processHolderClass(holderClass);
             } catch (ClassNotFoundException e) {
-                LOG.error("[GameTest] Could not load @GameTestHolder class '{}'", className, e);
+                LOG.error("Could not load @GameTestHolder class '{}'", className, e);
             }
         }
 
         LOG.info(
-            "[GameTest] Discovery complete: {} test(s) found across {} class(es).",
+            "Discovery complete: {} test(s) found across {} class(es).",
             ALL_TESTS.size(),
             holderAnnotations.size());
     }
@@ -104,7 +104,7 @@ public final class GameTestRegistry {
                     testAnn.required(),
                     testAnn.rotation());
                 ALL_TESTS.add(def);
-                LOG.debug("[GameTest] Registered test: {}", testId);
+                LOG.debug("Registered test: {}", testId);
             }
 
             BeforeBatch beforeAnn = method.getAnnotation(BeforeBatch.class);
@@ -140,7 +140,7 @@ public final class GameTestRegistry {
     private static boolean validateTestMethod(Method method, Class<?> clazz) {
         if (!Modifier.isStatic(method.getModifiers())) {
             LOG.warn(
-                "[GameTest] Skipping @GameTest method '{}' in '{}': must be static.",
+                "Skipping @GameTest method '{}' in '{}': must be static.",
                 method.getName(),
                 clazz.getName());
             return false;
@@ -148,7 +148,7 @@ public final class GameTestRegistry {
         Class<?>[] params = method.getParameterTypes();
         if (params.length != 1 || !GameTestHelper.class.isAssignableFrom(params[0])) {
             LOG.warn(
-                "[GameTest] Skipping @GameTest method '{}' in '{}': must take exactly one GameTestHelper parameter.",
+                "Skipping @GameTest method '{}' in '{}': must take exactly one GameTestHelper parameter.",
                 method.getName(),
                 clazz.getName());
             return false;
@@ -159,14 +159,14 @@ public final class GameTestRegistry {
     private static boolean validateBatchMethod(Method method, Class<?> clazz) {
         if (!Modifier.isStatic(method.getModifiers())) {
             LOG.warn(
-                "[GameTest] Skipping @BeforeBatch/@AfterBatch method '{}' in '{}': must be static.",
+                "Skipping @BeforeBatch/@AfterBatch method '{}' in '{}': must be static.",
                 method.getName(),
                 clazz.getName());
             return false;
         }
         if (method.getParameterCount() != 0) {
             LOG.warn(
-                "[GameTest] Skipping @BeforeBatch/@AfterBatch method '{}' in '{}': must take no parameters.",
+                "Skipping @BeforeBatch/@AfterBatch method '{}' in '{}': must take no parameters.",
                 method.getName(),
                 clazz.getName());
             return false;

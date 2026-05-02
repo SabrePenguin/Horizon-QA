@@ -3,6 +3,8 @@ package com.gtnewhorizons.gametest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.gtnewhorizons.gametest.core.GameTestChunkLoader;
+
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -16,6 +18,12 @@ public class GameTestMod {
     public static final String MODID = "gametest";
     public static final String NAME = "GTNH GameTest";
     public static final Logger LOG = LogManager.getLogger(MODID);
+
+    @Mod.Instance(GameTestMod.MODID)
+    public static GameTestMod instance;
+
+    /** Shared chunk-loader; registered as the ForgeChunkManager callback in preInit. */
+    public static final GameTestChunkLoader CHUNK_LOADER = new GameTestChunkLoader();
 
     @SidedProxy(
         clientSide = "com.gtnewhorizons.gametest.ClientProxy",
