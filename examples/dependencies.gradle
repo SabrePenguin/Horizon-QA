@@ -1,0 +1,7 @@
+/*
+ * Add your dependencies here. See the root `dependencies.gradle` for supported configurations.
+ */
+dependencies {
+    // Load the root mod alongside this one in runClient/runServer without publishing it as a Maven dependency.
+    devOnlyNonPublishable(project(":"))
+}
