@@ -1,15 +1,21 @@
 package com.gtnewhorizons.gametest;
 
 import net.minecraftforge.common.ForgeChunkManager;
+import net.minecraftforge.common.MinecraftForge;
 
+import com.gtnewhorizons.gametest.command.GameTestCommand;
 import com.gtnewhorizons.gametest.core.GameTestBatchRunner;
 import com.gtnewhorizons.gametest.core.GameTestRegistry;
+import com.gtnewhorizons.gametest.item.ItemGameTestWand;
+import com.gtnewhorizons.gametest.visual.SelectionBoxRenderer;
 import com.gtnewhorizons.gametest.world.GameTestWorldType;
 
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import cpw.mods.fml.common.registry.GameRegistry;
 
 public class CommonProxy {
 
@@ -31,6 +37,15 @@ public class CommonProxy {
 
         // Store the ASM data table so GameTestRegistry can use it during serverStarting
         GameTestRegistry.setAsmData(event.getAsmData());
+
+        // Register the GameTest Wand item
+        ItemGameTestWand.INSTANCE = new ItemGameTestWand();
+        GameRegistry.registerItem(ItemGameTestWand.INSTANCE, "gametest_wand");
+
+        // Register wand event handler: left-click intercept (Forge bus) + particle rendering (FML bus)
+        SelectionBoxRenderer wandHandler = new SelectionBoxRenderer();
+        MinecraftForge.EVENT_BUS.register(wandHandler);
+        FMLCommonHandler.instance().bus().register(wandHandler);
     }
 
     public void init(FMLInitializationEvent event) {}
@@ -38,6 +53,9 @@ public class CommonProxy {
     public void postInit(FMLPostInitializationEvent event) {}
 
     public void serverStarting(FMLServerStartingEvent event) {
+        // Register the /gametest command regardless of CI mode — it is used interactively
+        event.registerServerCommand(new GameTestCommand());
+
         if (!GameTestJvmFlags.isEnabled()) return;
 
         GameTestMod.LOG.info("Discovering tests...");
