@@ -11,24 +11,26 @@ import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.IFluidHandler;
 
+import com.gtnewhorizons.gametest.api.GameTestAssertException;
+import com.gtnewhorizons.gametest.api.GameTestHelper;
+import com.gtnewhorizons.gametest.api.TestPos;
+
 import gregtech.api.interfaces.IConfigurationCircuitSupport;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.util.GTUtility;
 
-import com.gtnewhorizons.gametest.api.GameTestAssertException;
-import com.gtnewhorizons.gametest.api.GameTestHelper;
-import com.gtnewhorizons.gametest.api.TestPos;
-
 /**
  * GT-specific test helper returned by {@link GameTestHelper#gtnh()}.
  *
- * <p>All {@link TestPos} arguments use <em>test-local (relative)</em> coordinates — the same
+ * <p>
+ * All {@link TestPos} arguments use <em>test-local (relative)</em> coordinates — the same
  * convention as the int-coordinate overloads on {@link GameTestHelper}. Internally they are
  * converted to world-absolute coordinates via {@link GameTestHelper#absolute}.
  *
- * <p>Time-warping ({@link #fastForwardTicks}/{@link #runUntilMachineIdle}) is fully synchronous:
+ * <p>
+ * Time-warping ({@link #fastForwardTicks}/{@link #runUntilMachineIdle}) is fully synchronous:
  * GT tile entities in the test region are force-ticked without advancing global server time, so
  * recipe completion tests finish in milliseconds of wall-clock time.
  */
@@ -75,15 +77,22 @@ public class GTNHGameTestHelper {
         IGregTechTileEntity igte = requireGTTE(relPos);
         IMetaTileEntity mte = igte.getMetaTileEntity();
         if (!(mte instanceof MTEMultiBlockBase multi)) {
-            throw error("TE at " + relPos + " is not an MTEMultiBlockBase (found: "
-                + mte.getClass().getSimpleName() + ")", relPos);
+            throw error(
+                "TE at " + relPos
+                    + " is not an MTEMultiBlockBase (found: "
+                    + mte.getClass()
+                        .getSimpleName()
+                    + ")",
+                relPos);
         }
         if (!multi.mMachine) {
             multi.checkStructure(true);
         }
         if (!multi.mMachine) {
-            throw error("Multiblock at " + relPos
-                + " structure is not formed (mMachine=false). Verify the template is placed correctly.", relPos);
+            throw error(
+                "Multiblock at " + relPos
+                    + " structure is not formed (mMachine=false). Verify the template is placed correctly.",
+                relPos);
         }
         multi.mStartUpCheck = -1;
     }
@@ -118,10 +127,17 @@ public class GTNHGameTestHelper {
      * once per simulated tick before the GT TE pass.
      */
     public void fastForwardTicks(int ticks) {
-        TimeWarpHandler.fastForward(world,
-            originX, originY, originZ,
-            originX + warpRange, originY + warpRange, originZ + warpRange,
-            ticks, dynamo, null);
+        TimeWarpHandler.fastForward(
+            world,
+            originX,
+            originY,
+            originZ,
+            originX + warpRange,
+            originY + warpRange,
+            originZ + warpRange,
+            ticks,
+            dynamo,
+            null);
     }
 
     /**
@@ -131,18 +147,31 @@ public class GTNHGameTestHelper {
      */
     public void runUntilMachineIdle(TestPos relPos, int timeoutTicks) {
         TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
-        int simulated = TimeWarpHandler.fastForward(world,
-            originX, originY, originZ,
-            originX + warpRange, originY + warpRange, originZ + warpRange,
-            timeoutTicks, dynamo, () -> {
+        int simulated = TimeWarpHandler.fastForward(
+            world,
+            originX,
+            originY,
+            originZ,
+            originX + warpRange,
+            originY + warpRange,
+            originZ + warpRange,
+            timeoutTicks,
+            dynamo,
+            () -> {
                 TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
                 return !(te instanceof IGregTechTileEntity igte) || !igte.isActive();
             });
 
         TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
         if (te instanceof IGregTechTileEntity igte && igte.isActive()) {
-            throw error("Machine at " + relPos + " is still active after " + simulated
-                + " simulated ticks (timeout=" + timeoutTicks + ")", relPos);
+            throw error(
+                "Machine at " + relPos
+                    + " is still active after "
+                    + simulated
+                    + " simulated ticks (timeout="
+                    + timeoutTicks
+                    + ")",
+                relPos);
         }
     }
 
@@ -169,8 +198,7 @@ public class GTNHGameTestHelper {
         IGregTechTileEntity igte = requireGTTE(relPos);
         long stored = igte.getStoredEU();
         if (stored < expectedEU) {
-            throw error("Expected >= " + expectedEU + " EU stored at " + relPos
-                + " but found " + stored, relPos);
+            throw error("Expected >= " + expectedEU + " EU stored at " + relPos + " but found " + stored, relPos);
         }
     }
 
@@ -189,7 +217,8 @@ public class GTNHGameTestHelper {
     /**
      * Fill the fluid hatch at {@code relPos} with {@code amount} mB of the named fluid.
      *
-     * <p>For GT tile entities the fill is applied directly on the {@link IMetaTileEntity} to
+     * <p>
+     * For GT tile entities the fill is applied directly on the {@link IMetaTileEntity} to
      * bypass the {@code mTickTimer > 5} guard in {@code BaseMetaTileEntity}, which would return
      * 0 when called before the hatch has been ticked (e.g. during test setup).
      *
@@ -208,7 +237,8 @@ public class GTNHGameTestHelper {
     /**
      * Fill the fluid hatch at {@code relPos} with the given {@link FluidStack}.
      *
-     * <p>For GT tile entities the fill is applied directly on the {@link IMetaTileEntity} to
+     * <p>
+     * For GT tile entities the fill is applied directly on the {@link IMetaTileEntity} to
      * bypass the {@code mTickTimer > 5} guard in {@code BaseMetaTileEntity}.
      */
     public void fillHatch(TestPos relPos, FluidStack fluidStack) {
@@ -221,14 +251,27 @@ public class GTNHGameTestHelper {
         } else if (te instanceof IFluidHandler fh) {
             handler = fh;
         } else {
-            throw error("No IFluidHandler at " + relPos + " (found: "
-                + (te != null ? te.getClass().getSimpleName() : "null") + ")", relPos);
+            throw error(
+                "No IFluidHandler at " + relPos
+                    + " (found: "
+                    + (te != null ? te.getClass()
+                        .getSimpleName() : "null")
+                    + ")",
+                relPos);
         }
 
         int filled = handler.fill(ForgeDirection.UNKNOWN, fluidStack, true);
         if (filled < fluidStack.amount) {
-            throw error("Could not fill " + fluidStack.amount + " mB of '" + fluidStack.getLocalizedName()
-                + "' into hatch at " + relPos + "; only " + filled + " mB accepted", relPos);
+            throw error(
+                "Could not fill " + fluidStack.amount
+                    + " mB of '"
+                    + fluidStack.getLocalizedName()
+                    + "' into hatch at "
+                    + relPos
+                    + "; only "
+                    + filled
+                    + " mB accepted",
+                relPos);
         }
     }
 
@@ -236,7 +279,8 @@ public class GTNHGameTestHelper {
      * Assert that the fluid hatch at {@code relPos} contains at least {@code amount} mB of the
      * named fluid.
      *
-     * <p>For GT tile entities the drain-peek is applied directly on the {@link IMetaTileEntity}
+     * <p>
+     * For GT tile entities the drain-peek is applied directly on the {@link IMetaTileEntity}
      * to bypass the {@code mTickTimer > 5} guard in {@code BaseMetaTileEntity}.
      */
     public void assertFluidInHatch(TestPos relPos, String fluidName, int amount) {
@@ -252,14 +296,20 @@ public class GTNHGameTestHelper {
         } else if (te instanceof IFluidHandler fh) {
             handler = fh;
         } else {
-            throw error("No IFluidHandler at " + relPos + " (found: "
-                + (te != null ? te.getClass().getSimpleName() : "null") + ")", relPos);
+            throw error(
+                "No IFluidHandler at " + relPos
+                    + " (found: "
+                    + (te != null ? te.getClass()
+                        .getSimpleName() : "null")
+                    + ")",
+                relPos);
         }
         FluidStack drained = handler.drain(ForgeDirection.UNKNOWN, expected.copy(), false);
         if (drained == null || drained.getFluidID() != expected.getFluidID() || drained.amount < amount) {
             String actual = drained != null ? drained.amount + " mB " + drained.getLocalizedName() : "<empty>";
-            throw error("Expected " + amount + " mB of '" + fluidName + "' in hatch at "
-                + relPos + " but found " + actual, relPos);
+            throw error(
+                "Expected " + amount + " mB of '" + fluidName + "' in hatch at " + relPos + " but found " + actual,
+                relPos);
         }
     }
 
@@ -280,8 +330,13 @@ public class GTNHGameTestHelper {
         IGregTechTileEntity igte = requireGTTE(relPos);
         IMetaTileEntity mte = igte.getMetaTileEntity();
         if (!(mte instanceof IConfigurationCircuitSupport circuitSupport)) {
-            throw error("TE at " + relPos + " does not support configuration circuits (found: "
-                + mte.getClass().getSimpleName() + ")", relPos);
+            throw error(
+                "TE at " + relPos
+                    + " does not support configuration circuits (found: "
+                    + mte.getClass()
+                        .getSimpleName()
+                    + ")",
+                relPos);
         }
         if (!circuitSupport.allowSelectCircuit()) {
             throw error("TE at " + relPos + " has circuit support disabled", relPos);
@@ -316,16 +371,18 @@ public class GTNHGameTestHelper {
      * origin chunk since this helper was created (i.e. since {@link GameTestHelper#gtnh()} was
      * first called).
      *
-     * <p>Pollution is read from {@code gregtech.common.pollution.Pollution} via reflection. If
+     * <p>
+     * Pollution is read from {@code gregtech.common.pollution.Pollution} via reflection. If
      * the class or method is absent, this assertion silently passes.
      */
     public void assertPollutionEmitted(long expectedPollution) {
         long emitted = getPollutionAtOrigin() - pollutionBefore;
         if (emitted < expectedPollution) {
             throw new GameTestAssertException(
-                "Expected >= " + expectedPollution + " pollution emitted but measured " + emitted
-                    + " (origin chunk)",
-                originX, originY, originZ);
+                "Expected >= " + expectedPollution + " pollution emitted but measured " + emitted + " (origin chunk)",
+                originX,
+                originY,
+                originZ);
         }
     }
 
@@ -333,22 +390,34 @@ public class GTNHGameTestHelper {
      * Assert that the cleanroom controller at {@code relPos} has an efficiency of at least
      * {@code expectedEfficiency} (0–10000, representing 0–100.00 %).
      *
-     * <p>Efficiency is read from {@code mEfficiency} via reflection so the helper compiles
+     * <p>
+     * Efficiency is read from {@code mEfficiency} via reflection so the helper compiles
      * without a hard dependency on the cleanroom's concrete class.
      */
     public void assertCleanroomStatus(TestPos relPos, int expectedEfficiency) {
         IGregTechTileEntity igte = requireGTTE(relPos);
         IMetaTileEntity mte = igte.getMetaTileEntity();
         try {
-            java.lang.reflect.Field f = mte.getClass().getField("mEfficiency");
+            java.lang.reflect.Field f = mte.getClass()
+                .getField("mEfficiency");
             int efficiency = f.getInt(mte);
             if (efficiency < expectedEfficiency) {
-                throw error("Cleanroom at " + relPos + " has efficiency " + efficiency
-                    + " but expected >= " + expectedEfficiency, relPos);
+                throw error(
+                    "Cleanroom at " + relPos
+                        + " has efficiency "
+                        + efficiency
+                        + " but expected >= "
+                        + expectedEfficiency,
+                    relPos);
             }
         } catch (NoSuchFieldException e) {
-            throw error("TE at " + relPos + " has no 'mEfficiency' field — is it really a cleanroom? ("
-                + mte.getClass().getName() + ")", relPos);
+            throw error(
+                "TE at " + relPos
+                    + " has no 'mEfficiency' field — is it really a cleanroom? ("
+                    + mte.getClass()
+                        .getName()
+                    + ")",
+                relPos);
         } catch (IllegalAccessException e) {
             throw error("Cannot read mEfficiency at " + relPos + ": " + e.getMessage(), relPos);
         }
@@ -358,8 +427,12 @@ public class GTNHGameTestHelper {
         TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
         TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
         if (!(te instanceof IGregTechTileEntity igte)) {
-            throw error("Expected an IGregTechTileEntity at " + relPos + " but found: "
-                + (te != null ? te.getClass().getSimpleName() : "null"), relPos);
+            throw error(
+                "Expected an IGregTechTileEntity at " + relPos
+                    + " but found: "
+                    + (te != null ? te.getClass()
+                        .getSimpleName() : "null"),
+                relPos);
         }
         return igte;
     }
@@ -368,8 +441,13 @@ public class GTNHGameTestHelper {
         IGregTechTileEntity igte = requireGTTE(relPos);
         IMetaTileEntity mte = igte.getMetaTileEntity();
         if (!(mte instanceof MTEMultiBlockBase multi)) {
-            throw error("TE at " + relPos + " is not an MTEMultiBlockBase (found: "
-                + mte.getClass().getSimpleName() + ")", relPos);
+            throw error(
+                "TE at " + relPos
+                    + " is not an MTEMultiBlockBase (found: "
+                    + mte.getClass()
+                        .getSimpleName()
+                    + ")",
+                relPos);
         }
         return multi;
     }

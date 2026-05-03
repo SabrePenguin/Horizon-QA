@@ -14,17 +14,21 @@ import com.gtnewhorizons.gametest.core.GameTestStatus;
  * Writes a JUnit-compatible XML report ({@code TEST-gametest.xml}) consumable by CI tools
  * (Jenkins, GitHub Actions, etc.).
  *
- * <p>Format:
+ * <p>
+ * Format:
  *
- * <pre>{@code
+ * <pre>
+ * {@code
  * <testsuite name="gametest" tests="N" failures="F" errors="E" time="T">
  *   <testcase name="methodName" classname="batch" time="T">
  *     <failure message="..." type="GameTestAssertException">stacktrace</failure>
  *   </testcase>
  * </testsuite>
- * }</pre>
+ * }
+ * </pre>
  *
- * <p>Tick counts are converted to seconds using a 20 ticks-per-second constant.
+ * <p>
+ * Tick counts are converted to seconds using a 20 ticks-per-second constant.
  */
 public final class JUnitXmlReporter {
 
@@ -85,11 +89,7 @@ public final class JUnitXmlReporter {
             return;
         }
 
-        pw.printf(
-            "  <testcase name=\"%s\" classname=\"%s\" time=\"%.3f\">%n",
-            escape(name),
-            escape(classname),
-            time);
+        pw.printf("  <testcase name=\"%s\" classname=\"%s\" time=\"%.3f\">%n", escape(name), escape(classname), time);
 
         if (status == GameTestStatus.FAILED) {
             Throwable cause = inst.getFailureCause();
@@ -106,9 +106,7 @@ public final class JUnitXmlReporter {
                 "    <error message=\"Timed out after %d ticks\" type=\"GameTestTimeoutError\"/>%n",
                 inst.getTickCount());
         } else {
-            pw.printf(
-                "    <error message=\"Test did not complete (status: %s)\" type=\"GameTestError\"/>%n",
-                status);
+            pw.printf("    <error message=\"Test did not complete (status: %s)\" type=\"GameTestError\"/>%n", status);
         }
 
         pw.println("  </testcase>");

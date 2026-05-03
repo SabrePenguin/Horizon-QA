@@ -19,7 +19,8 @@ import org.lwjgl.opengl.GL11;
  * through terrain without the player needing line-of-sight.
  * Hidden when farther than ten blocks from the view camera (eyes).
  *
- * <p>Must be called while the outer GL matrix has been translated by
+ * <p>
+ * Must be called while the outer GL matrix has been translated by
  * {@code (-camX, -camY, -camZ)} so that world coordinates work naturally.
  * Pass {@code partialTicks} from the current render phase (e.g.
  * {@link net.minecraftforge.client.event.RenderWorldLastEvent#partialTicks}).
@@ -32,7 +33,7 @@ public final class FloatingText {
      */
     private static final float SCALE = 0.025f;
     /** Background quad padding in font pixels. */
-    private static final int   PAD   = 2;
+    private static final int PAD = 2;
     /** Beyond this Euclidean distance from the camera, labels are skipped. */
     private static final double MAX_VIEW_DISTANCE_SQ = 5.0 * 5.0;
     /** Max width per line in font pixels; longer segments wrap to extra lines (MC format codes preserved). */
@@ -55,13 +56,13 @@ public final class FloatingText {
     /**
      * Draw text lines centered at the given world position.
      *
-     * @param wx/wy/wz       world-space anchor (text is centered horizontally, top-aligned)
-     * @param lines          one or more lines; MC color codes ({@code §a}, {@code §c}, …) accepted
+     * @param wx/wy/wz        world-space anchor (text is centered horizontally, top-aligned)
+     * @param lines           one or more lines; MC color codes ({@code §a}, {@code §c}, …) accepted
      * @param scaleMultiplier multiplies the base scale (use &lt;1 for small labels, e.g. 0.5f)
-     * @param partialTicks   frame interpolation factor for camera position (see class Javadoc)
+     * @param partialTicks    frame interpolation factor for camera position (see class Javadoc)
      */
-    public static void render(double wx, double wy, double wz, String[] lines,
-            float scaleMultiplier, float partialTicks) {
+    public static void render(double wx, double wy, double wz, String[] lines, float scaleMultiplier,
+        float partialTicks) {
         if (lines == null || lines.length == 0) return;
         Minecraft mc = Minecraft.getMinecraft();
         Entity view = mc.renderViewEntity != null ? mc.renderViewEntity : mc.thePlayer;
@@ -92,7 +93,7 @@ public final class FloatingText {
         GL11.glPushMatrix();
         GL11.glTranslated(wx, wy, wz);
         GL11.glRotatef(-RenderManager.instance.playerViewY, 0f, 1f, 0f);
-        GL11.glRotatef( RenderManager.instance.playerViewX, 1f, 0f, 0f);
+        GL11.glRotatef(RenderManager.instance.playerViewX, 1f, 0f, 0f);
         GL11.glScalef(-s, -s, s);
 
         GL11.glDisable(GL11.GL_DEPTH_TEST);
@@ -100,7 +101,7 @@ public final class FloatingText {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
         int bx0 = -maxW / 2 - PAD;
-        int bx1 =  maxW / 2 + PAD;
+        int bx1 = maxW / 2 + PAD;
         int by0 = -PAD;
         int by1 = totalH + PAD;
 

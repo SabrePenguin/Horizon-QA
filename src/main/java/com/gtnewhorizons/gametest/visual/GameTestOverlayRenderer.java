@@ -4,6 +4,7 @@ import java.util.Collection;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraftforge.client.event.RenderWorldLastEvent;
 
 import org.lwjgl.opengl.GL11;
 
@@ -17,42 +18,43 @@ import com.gtnewhorizons.gametest.visual.drawables.GhostBlockDiff;
 import com.gtnewhorizons.gametest.visual.drawables.HighlightBox;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.client.event.RenderWorldLastEvent;
 
 /**
  * Client-side stateless overlay renderer. Subscribes to {@link RenderWorldLastEvent} and
  * each frame renders:
  *
  * <ol>
- *   <li>A bounding-box wireframe around every known test cell.</li>
- *   <li>A glowing beacon pillar above each cell, color-coded by test status.</li>
- *   <li>Billboarded floating text above the beacon: test name, status with tick progress while
- *       running, and (for failures) an ellipsized assertion summary plus fail coordinates when known;
- *       the red ghost marker keeps the full message.</li>
- *   <li>A red ghost-block at the assertion-failure position when the exception carried
- *       world coordinates.</li>
- *   <li>Any custom {@link GhostBlockDiff} objects submitted through
- *       {@link VisualManager}.</li>
+ * <li>A bounding-box wireframe around every known test cell.</li>
+ * <li>A glowing beacon pillar above each cell, color-coded by test status.</li>
+ * <li>Billboarded floating text above the beacon: test name, status with tick progress while
+ * running, and (for failures) an ellipsized assertion summary plus fail coordinates when known;
+ * the red ghost marker keeps the full message.</li>
+ * <li>A red ghost-block at the assertion-failure position when the exception carried
+ * world coordinates.</li>
+ * <li>Any custom {@link GhostBlockDiff} objects submitted through
+ * {@link VisualManager}.</li>
  * </ol>
  *
- * <p>All geometry uses world-space coordinates. One outer {@code glTranslated(-camX, …)}
+ * <p>
+ * All geometry uses world-space coordinates. One outer {@code glTranslated(-camX, …)}
  * converts them to camera-relative space; the drawables never need the camera position.
  *
- * <p>Registered from {@link com.gtnewhorizons.gametest.ClientProxy#init}.
+ * <p>
+ * Registered from {@link com.gtnewhorizons.gametest.ClientProxy#init}.
  */
 public final class GameTestOverlayRenderer {
 
-    private static final float[] COL_WHITE = {1f, 1f, 1f};
-    private static final float[] COL_RUNNING = {0.55f, 0.55f, 0.55f}; // gray
-    private static final float[] COL_PASSED  = {0.18f, 1.00f, 0.38f}; // green
-    private static final float[] COL_FAILED  = {1.00f, 0.16f, 0.16f}; // red
-    private static final float[] COL_TIMEOUT = {1.00f, 0.62f, 0.04f}; // orange
+    private static final float[] COL_WHITE = { 1f, 1f, 1f };
+    private static final float[] COL_RUNNING = { 0.55f, 0.55f, 0.55f }; // gray
+    private static final float[] COL_PASSED = { 0.18f, 1.00f, 0.38f }; // green
+    private static final float[] COL_FAILED = { 1.00f, 0.16f, 0.16f }; // red
+    private static final float[] COL_TIMEOUT = { 1.00f, 0.62f, 0.04f }; // orange
 
     /**
      * Y blocks above the cell ceiling where floating text is anchored.
      * Gives enough clearance so the text does not overlap the beacon start.
      */
-    private static final double TEXT_Y_LIFT   = 3.0;
+    private static final double TEXT_Y_LIFT = 3.0;
 
     /** Above-cell failure summary: truncated; full text stays on the ghost {@link FloatingText} at the fail block. */
     private static final int MAX_CELL_FAILURE_CHARS = 96;
@@ -62,24 +64,28 @@ public final class GameTestOverlayRenderer {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || mc.thePlayer == null) return;
 
-        EntityLivingBase viewer = mc.renderViewEntity instanceof EntityLivingBase
-            ? mc.renderViewEntity : mc.thePlayer;
+        EntityLivingBase viewer = mc.renderViewEntity instanceof EntityLivingBase ? mc.renderViewEntity : mc.thePlayer;
 
         float pt = event.partialTicks;
         double camX = viewer.lastTickPosX + (viewer.posX - viewer.lastTickPosX) * pt;
         double camY = viewer.lastTickPosY + (viewer.posY - viewer.lastTickPosY) * pt;
         double camZ = viewer.lastTickPosZ + (viewer.posZ - viewer.lastTickPosZ) * pt;
-        long   wt   = mc.theWorld.getTotalWorldTime();
+        long wt = mc.theWorld.getTotalWorldTime();
 
         InteractiveTestSession session = InteractiveTestSession.get();
         Collection<CellRecord> cells = session.getKnownCells();
-        if (cells.isEmpty() && VisualManager.getGhosts().isEmpty()) return;
+        if (cells.isEmpty() && VisualManager.getGhosts()
+            .isEmpty()) return;
 
         GL11.glPushMatrix();
         GL11.glPushAttrib(
-            GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT
-                | GL11.GL_CURRENT_BIT | GL11.GL_LINE_BIT | GL11.GL_POLYGON_BIT
-                | GL11.GL_TEXTURE_BIT | GL11.GL_HINT_BIT);
+            GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT
+                | GL11.GL_COLOR_BUFFER_BIT
+                | GL11.GL_CURRENT_BIT
+                | GL11.GL_LINE_BIT
+                | GL11.GL_POLYGON_BIT
+                | GL11.GL_TEXTURE_BIT
+                | GL11.GL_HINT_BIT);
 
         GL11.glDisable(GL11.GL_LIGHTING);
         GL11.glDisable(GL11.GL_ALPHA_TEST);
@@ -89,16 +95,23 @@ public final class GameTestOverlayRenderer {
         GL11.glTranslated(-camX, -camY, -camZ);
 
         for (CellRecord cell : cells) {
-            GameTestInstance inst   = session.getLastInstance(cell.testId);
-            GameTestStatus   status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
+            GameTestInstance inst = session.getLastInstance(cell.testId);
+            GameTestStatus status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
             if (status == GameTestStatus.NOT_STARTED) continue;
 
-            float[] col      = statusColor(status);
+            float[] col = statusColor(status);
 
             HighlightBox.render(
-                cell.minX,       cell.minY,       cell.minZ,
-                cell.maxX + 1.0, cell.maxY + 1.0, cell.maxZ + 1.0,
-                1.0f, 1.0f, 1.0f, 0.5f);
+                cell.minX,
+                cell.minY,
+                cell.minZ,
+                cell.maxX + 1.0,
+                cell.maxY + 1.0,
+                cell.maxZ + 1.0,
+                1.0f,
+                1.0f,
+                1.0f,
+                0.5f);
 
             double bcx = cell.minX - 0.5;
             double bcy = cell.minY;
@@ -111,27 +124,26 @@ public final class GameTestOverlayRenderer {
         }
 
         for (CellRecord cell : cells) {
-            GameTestInstance inst   = session.getLastInstance(cell.testId);
-            GameTestStatus   status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
+            GameTestInstance inst = session.getLastInstance(cell.testId);
+            GameTestStatus status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
             if (status == GameTestStatus.NOT_STARTED) continue;
 
             double bcx = cell.minX - 0.5;
             double bcz = cell.minZ - 0.5;
 
-            FloatingText.render(bcx, cell.minY + TEXT_Y_LIFT, bcz,
-                buildLines(cell.testId, status, inst), pt);
+            FloatingText.render(bcx, cell.minY + TEXT_Y_LIFT, bcz, buildLines(cell.testId, status, inst), pt);
 
             if (inst.hasFailPosition()) {
                 String failLabel = null;
                 if (inst.getFailureCause() != null) {
-                    String m = inst.getFailureCause().getMessage();
+                    String m = inst.getFailureCause()
+                        .getMessage();
                     if (m != null && !m.isEmpty()) {
                         failLabel = m;
                     }
                 }
-                new GhostBlockDiff(
-                    inst.getFailX(), inst.getFailY(), inst.getFailZ(),
-                    1.0f, 0.12f, 0.12f, failLabel).render(pt);
+                new GhostBlockDiff(inst.getFailX(), inst.getFailY(), inst.getFailZ(), 1.0f, 0.12f, 0.12f, failLabel)
+                    .render(pt);
             }
         }
 
@@ -148,8 +160,7 @@ public final class GameTestOverlayRenderer {
         };
     }
 
-    private static String[] buildLines(String testId, GameTestStatus status,
-            GameTestInstance inst) {
+    private static String[] buildLines(String testId, GameTestStatus status, GameTestInstance inst) {
         String name = testId.contains(":") ? testId.substring(testId.indexOf(':') + 1) : testId;
         String statusLine = statusLabel(status, inst);
 
@@ -167,8 +178,7 @@ public final class GameTestOverlayRenderer {
                 String detail = "\u00a7c" + ellipsize(msg, MAX_CELL_FAILURE_CHARS);
                 if (hasPos) {
                     return new String[] { name, statusLine, detail,
-                        String.format("\u00a78%d %d %d\u00a7r",
-                            inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
+                        String.format("\u00a78%d %d %d\u00a7r", inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
                 }
                 return new String[] { name, statusLine, detail };
             }
@@ -176,8 +186,7 @@ public final class GameTestOverlayRenderer {
             String fallback = "\u00a7cNon-assertion error - see log\u00a7r";
             if (hasPos) {
                 return new String[] { name, statusLine, fallback,
-                    String.format("\u00a78%d %d %d\u00a7r",
-                        inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
+                    String.format("\u00a78%d %d %d\u00a7r", inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
             }
             return new String[] { name, statusLine, fallback };
         }
@@ -202,11 +211,13 @@ public final class GameTestOverlayRenderer {
         if (inst == null) return base;
         if (s == GameTestStatus.RUNNING) {
             int t = inst.getTickCount();
-            int lim = inst.getDefinition().getTimeoutTicks();
+            int lim = inst.getDefinition()
+                .getTimeoutTicks();
             return base + String.format(" \u00a78%d/%d t\u00a7r", t, lim);
         }
         if (s == GameTestStatus.TIMED_OUT) {
-            int lim = inst.getDefinition().getTimeoutTicks();
+            int lim = inst.getDefinition()
+                .getTimeoutTicks();
             return base + String.format(" \u00a78(after %d t)\u00a7r", lim);
         }
         return base;

@@ -10,6 +10,7 @@ import com.gtnewhorizons.gametest.core.InteractiveTestSession;
 import com.gtnewhorizons.gametest.item.ItemGameTestWand;
 import com.gtnewhorizons.gametest.visual.SelectionBoxRenderer;
 import com.gtnewhorizons.gametest.world.GameTestWorldType;
+
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;

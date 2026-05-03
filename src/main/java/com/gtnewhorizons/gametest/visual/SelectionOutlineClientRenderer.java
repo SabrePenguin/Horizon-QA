@@ -1,17 +1,17 @@
 package com.gtnewhorizons.gametest.visual;
 
-import org.lwjgl.opengl.GL11;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.client.event.RenderWorldLastEvent;
+
+import org.lwjgl.opengl.GL11;
 
 import com.gtnewhorizons.gametest.item.ItemGameTestWand;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.client.event.RenderWorldLastEvent;
 
 /**
  * Axios-style selection hull: cuboid wireframe via {@link GL11#GL_LINES} with {@link GL11#GL_LINE_SMOOTH}
@@ -84,17 +84,14 @@ public final class SelectionOutlineClientRenderer {
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
-        EntityLivingBase viewer = mc.renderViewEntity instanceof EntityLivingBase
-            ? mc.renderViewEntity
-            : mc.thePlayer;
+        EntityLivingBase viewer = mc.renderViewEntity instanceof EntityLivingBase ? mc.renderViewEntity : mc.thePlayer;
         if (viewer == null || mc.theWorld == null) return;
 
         ItemStack held = mc.thePlayer.getHeldItem();
         if (held == null || !(held.getItem() instanceof ItemGameTestWand)) return;
 
         NBTTagCompound nbt = held.getTagCompound();
-        if (nbt == null
-            || !nbt.getBoolean(ItemGameTestWand.TAG_POS1_SET)
+        if (nbt == null || !nbt.getBoolean(ItemGameTestWand.TAG_POS1_SET)
             || !nbt.getBoolean(ItemGameTestWand.TAG_POS2_SET)) {
             return;
         }
@@ -110,8 +107,12 @@ public final class SelectionOutlineClientRenderer {
         GL11.glPushMatrix();
         GL11.glTranslated(-vx, -vy, -vz);
         GL11.glPushAttrib(
-            GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT
-                | GL11.GL_CURRENT_BIT | GL11.GL_POLYGON_BIT | GL11.GL_LINE_BIT | GL11.GL_HINT_BIT);
+            GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT
+                | GL11.GL_COLOR_BUFFER_BIT
+                | GL11.GL_CURRENT_BIT
+                | GL11.GL_POLYGON_BIT
+                | GL11.GL_LINE_BIT
+                | GL11.GL_HINT_BIT);
 
         GL11.glDisable(GL11.GL_LIGHTING);
         GL11.glDisable(GL11.GL_ALPHA_TEST);
@@ -192,15 +193,24 @@ public final class SelectionOutlineClientRenderer {
 
     /** Pre-computed wireframe and face bounds for the current selection. */
     private static final class SelectionBounds {
+
         final double x0, y0, z0, x1, y1, z1;
         final double fx0, fy0, fz0, fx1, fy1, fz1;
 
-        SelectionBounds(double x0, double y0, double z0, double x1, double y1, double z1,
-                         double fx0, double fy0, double fz0, double fx1, double fy1, double fz1) {
-            this.x0 = x0; this.y0 = y0; this.z0 = z0;
-            this.x1 = x1; this.y1 = y1; this.z1 = z1;
-            this.fx0 = fx0; this.fy0 = fy0; this.fz0 = fz0;
-            this.fx1 = fx1; this.fy1 = fy1; this.fz1 = fz1;
+        SelectionBounds(double x0, double y0, double z0, double x1, double y1, double z1, double fx0, double fy0,
+            double fz0, double fx1, double fy1, double fz1) {
+            this.x0 = x0;
+            this.y0 = y0;
+            this.z0 = z0;
+            this.x1 = x1;
+            this.y1 = y1;
+            this.z1 = z1;
+            this.fx0 = fx0;
+            this.fy0 = fy0;
+            this.fz0 = fz0;
+            this.fx1 = fx1;
+            this.fy1 = fy1;
+            this.fz1 = fz1;
         }
 
         static SelectionBounds fromNBT(NBTTagCompound nbt) {
@@ -219,10 +229,18 @@ public final class SelectionOutlineClientRenderer {
             double maxZ = Math.max(bz1, bz2) + 1.0;
 
             return new SelectionBounds(
-                minX - OUT, minY - OUT, minZ - OUT,
-                maxX + OUT, maxY + OUT, maxZ + OUT,
-                minX - OUT - FACE_OUT_EXTRA, minY - OUT - FACE_OUT_EXTRA, minZ - OUT - FACE_OUT_EXTRA,
-                maxX + OUT + FACE_OUT_EXTRA, maxY + OUT + FACE_OUT_EXTRA, maxZ + OUT + FACE_OUT_EXTRA);
+                minX - OUT,
+                minY - OUT,
+                minZ - OUT,
+                maxX + OUT,
+                maxY + OUT,
+                maxZ + OUT,
+                minX - OUT - FACE_OUT_EXTRA,
+                minY - OUT - FACE_OUT_EXTRA,
+                minZ - OUT - FACE_OUT_EXTRA,
+                maxX + OUT + FACE_OUT_EXTRA,
+                maxY + OUT + FACE_OUT_EXTRA,
+                maxZ + OUT + FACE_OUT_EXTRA);
         }
     }
 
@@ -252,8 +270,8 @@ public final class SelectionOutlineClientRenderer {
      * Six solid quads, CCW outward (same hull as legacy textured version — used without UV / without
      * texture bind).
      */
-    private static void addHullFacesSolid(Tessellator tess,
-        double x0, double y0, double z0, double x1, double y1, double z1) {
+    private static void addHullFacesSolid(Tessellator tess, double x0, double y0, double z0, double x1, double y1,
+        double z1) {
 
         quadSolid(tess, x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1);
         quadSolid(tess, x0, y0, z1, x0, y1, z1, x0, y1, z0, x0, y0, z0);
@@ -267,8 +285,8 @@ public final class SelectionOutlineClientRenderer {
      * Twelve edges of an axis-aligned box as {@link GL11#GL_LINES} segment pairs (call inside
      * {@link Tessellator#startDrawing(int)} with {@code GL_LINES}).
      */
-    private static void addTrueWireframeEdges(Tessellator tess,
-        double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+    private static void addTrueWireframeEdges(Tessellator tess, double minX, double minY, double minZ, double maxX,
+        double maxY, double maxZ) {
 
         tess.addVertex(minX, minY, minZ);
         tess.addVertex(maxX, minY, minZ);
@@ -298,11 +316,8 @@ public final class SelectionOutlineClientRenderer {
         tess.addVertex(minX, maxY, maxZ);
     }
 
-    private static void quadSolid(Tessellator tess,
-        double ax, double ay, double az,
-        double bx, double by, double bz,
-        double cx, double cy, double cz,
-        double dx, double dy, double dz) {
+    private static void quadSolid(Tessellator tess, double ax, double ay, double az, double bx, double by, double bz,
+        double cx, double cy, double cz, double dx, double dy, double dz) {
         tess.addVertex(ax, ay, az);
         tess.addVertex(bx, by, bz);
         tess.addVertex(cx, cy, cz);

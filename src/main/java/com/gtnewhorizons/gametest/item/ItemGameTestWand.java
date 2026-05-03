@@ -53,8 +53,8 @@ public class ItemGameTestWand extends Item {
     }
 
     @Override
-    public boolean onItemUse(ItemStack stack, EntityPlayer player, World world, int x, int y, int z,
-        int side, float hitX, float hitY, float hitZ) {
+    public boolean onItemUse(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side,
+        float hitX, float hitY, float hitZ) {
         if (!world.isRemote) {
             setPos2(stack, player, x, y, z);
         }
@@ -73,8 +73,15 @@ public class ItemGameTestWand extends Item {
         nbt.setBoolean(TAG_POS1_SET, true);
         player.addChatMessage(
             new ChatComponentText(
-                EnumChatFormatting.GREEN + "Pos1" + EnumChatFormatting.RESET
-                    + " set to (" + x + ", " + y + ", " + z + ")"));
+                EnumChatFormatting.GREEN + "Pos1"
+                    + EnumChatFormatting.RESET
+                    + " set to ("
+                    + x
+                    + ", "
+                    + y
+                    + ", "
+                    + z
+                    + ")"));
         printDimensions(player, nbt);
     }
 
@@ -87,8 +94,15 @@ public class ItemGameTestWand extends Item {
         nbt.setBoolean(TAG_POS2_SET, true);
         player.addChatMessage(
             new ChatComponentText(
-                EnumChatFormatting.AQUA + "Pos2" + EnumChatFormatting.RESET
-                    + " set to (" + x + ", " + y + ", " + z + ")"));
+                EnumChatFormatting.AQUA + "Pos2"
+                    + EnumChatFormatting.RESET
+                    + " set to ("
+                    + x
+                    + ", "
+                    + y
+                    + ", "
+                    + z
+                    + ")"));
         printDimensions(player, nbt);
     }
 
@@ -100,8 +114,14 @@ public class ItemGameTestWand extends Item {
             player.addChatMessage(
                 new ChatComponentText(
                     EnumChatFormatting.YELLOW + "Selection: "
-                        + dx + "\u00d7" + dy + "\u00d7" + dz
-                        + " (" + (dx * dy * dz) + " blocks)"));
+                        + dx
+                        + "\u00d7"
+                        + dy
+                        + "\u00d7"
+                        + dz
+                        + " ("
+                        + (dx * dy * dz)
+                        + " blocks)"));
         }
     }
 
@@ -113,35 +133,41 @@ public class ItemGameTestWand extends Item {
 
         if (nbt == null || !nbt.getBoolean(TAG_POS1_SET)) {
             list.add(
-                EnumChatFormatting.GRAY + "Pos1: "
-                    + EnumChatFormatting.DARK_GRAY + "Not set (left-click a block)");
+                EnumChatFormatting.GRAY + "Pos1: " + EnumChatFormatting.DARK_GRAY + "Not set (left-click a block)");
         } else {
             list.add(
-                EnumChatFormatting.GREEN + "Pos1: " + EnumChatFormatting.WHITE
-                    + "(" + nbt.getInteger(TAG_POS1_X) + ", "
-                    + nbt.getInteger(TAG_POS1_Y) + ", "
-                    + nbt.getInteger(TAG_POS1_Z) + ")");
+                EnumChatFormatting.GREEN + "Pos1: "
+                    + EnumChatFormatting.WHITE
+                    + "("
+                    + nbt.getInteger(TAG_POS1_X)
+                    + ", "
+                    + nbt.getInteger(TAG_POS1_Y)
+                    + ", "
+                    + nbt.getInteger(TAG_POS1_Z)
+                    + ")");
         }
 
         if (nbt == null || !nbt.getBoolean(TAG_POS2_SET)) {
             list.add(
-                EnumChatFormatting.GRAY + "Pos2: "
-                    + EnumChatFormatting.DARK_GRAY + "Not set (right-click a block)");
+                EnumChatFormatting.GRAY + "Pos2: " + EnumChatFormatting.DARK_GRAY + "Not set (right-click a block)");
         } else {
             list.add(
-                EnumChatFormatting.AQUA + "Pos2: " + EnumChatFormatting.WHITE
-                    + "(" + nbt.getInteger(TAG_POS2_X) + ", "
-                    + nbt.getInteger(TAG_POS2_Y) + ", "
-                    + nbt.getInteger(TAG_POS2_Z) + ")");
+                EnumChatFormatting.AQUA + "Pos2: "
+                    + EnumChatFormatting.WHITE
+                    + "("
+                    + nbt.getInteger(TAG_POS2_X)
+                    + ", "
+                    + nbt.getInteger(TAG_POS2_Y)
+                    + ", "
+                    + nbt.getInteger(TAG_POS2_Z)
+                    + ")");
         }
 
         if (nbt != null && nbt.getBoolean(TAG_POS1_SET) && nbt.getBoolean(TAG_POS2_SET)) {
             int dx = Math.abs(nbt.getInteger(TAG_POS2_X) - nbt.getInteger(TAG_POS1_X)) + 1;
             int dy = Math.abs(nbt.getInteger(TAG_POS2_Y) - nbt.getInteger(TAG_POS1_Y)) + 1;
             int dz = Math.abs(nbt.getInteger(TAG_POS2_Z) - nbt.getInteger(TAG_POS1_Z)) + 1;
-            list.add(
-                EnumChatFormatting.YELLOW + "Size: "
-                    + dx + "\u00d7" + dy + "\u00d7" + dz);
+            list.add(EnumChatFormatting.YELLOW + "Size: " + dx + "\u00d7" + dy + "\u00d7" + dz);
         }
     }
 

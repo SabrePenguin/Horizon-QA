@@ -9,7 +9,8 @@ import org.lwjgl.opengl.GL11;
  * assertion-failure positions (red) or expected block positions (green) without
  * physically placing any blocks in the world.
  *
- * <p>Call {@link #render(float)} while the outer GL matrix is translated by
+ * <p>
+ * Call {@link #render(float)} while the outer GL matrix is translated by
  * {@code (-camX, -camY, -camZ)} so that the stored world coordinates work directly.
  */
 public final class GhostBlockDiff {
@@ -29,15 +30,20 @@ public final class GhostBlockDiff {
     private static final double INSET = 0.0045;
 
     public GhostBlockDiff(int x, int y, int z, float r, float g, float b, String label) {
-        this.x = x; this.y = y; this.z = z;
-        this.r = r; this.g = g; this.b = b;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.r = r;
+        this.g = g;
+        this.b = b;
         this.label = label;
     }
 
     /**
      * Draw this ghost block into the current GL context (outer camera-offset matrix assumed).
      *
-     * @param partialTicks same as {@link FloatingText} / {@link net.minecraftforge.client.event.RenderWorldLastEvent#partialTicks}
+     * @param partialTicks same as {@link FloatingText} /
+     *                     {@link net.minecraftforge.client.event.RenderWorldLastEvent#partialTicks}
      */
     public void render(float partialTicks) {
         double x0 = x - INSET;
@@ -57,12 +63,12 @@ public final class GhostBlockDiff {
 
         Tessellator tess = Tessellator.instance;
         tess.startDrawingQuads();
-        face(tess, x1,y0,z1, x1,y1,z1, x1,y1,z0, x1,y0,z0);
-        face(tess, x0,y0,z0, x0,y1,z0, x0,y1,z1, x0,y0,z1);
-        face(tess, x0,y1,z0, x0,y1,z1, x1,y1,z1, x1,y1,z0);
-        face(tess, x0,y0,z1, x0,y0,z0, x1,y0,z0, x1,y0,z1);
-        face(tess, x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1);
-        face(tess, x1,y0,z0, x0,y0,z0, x0,y1,z0, x1,y1,z0);
+        face(tess, x1, y0, z1, x1, y1, z1, x1, y1, z0, x1, y0, z0);
+        face(tess, x0, y0, z0, x0, y1, z0, x0, y1, z1, x0, y0, z1);
+        face(tess, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0);
+        face(tess, x0, y0, z1, x0, y0, z0, x1, y0, z0, x1, y0, z1);
+        face(tess, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
+        face(tess, x1, y0, z0, x0, y0, z0, x0, y1, z0, x1, y1, z0);
         tess.draw();
 
         GL11.glDepthMask(true);
@@ -75,9 +81,8 @@ public final class GhostBlockDiff {
         }
     }
 
-    private void face(Tessellator tess,
-            double ax, double ay, double az, double bx, double by, double bz,
-            double cx, double cy, double cz, double dx, double dy, double dz) {
+    private void face(Tessellator tess, double ax, double ay, double az, double bx, double by, double bz, double cx,
+        double cy, double cz, double dx, double dy, double dz) {
         tess.setColorRGBA_F(r, g, b, ALPHA);
         tess.addVertex(ax, ay, az);
         tess.setColorRGBA_F(r, g, b, ALPHA);

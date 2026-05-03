@@ -11,7 +11,8 @@ import com.gtnewhorizons.gametest.core.GameTestStatus;
 /**
  * Writes a human-readable, per-test summary of all results to the server log.
  *
- * <p>One line per test: {@code [PASS]}, {@code [FAIL]}, or {@code [TIME]} (timed-out). Failed tests
+ * <p>
+ * One line per test: {@code [PASS]}, {@code [FAIL]}, or {@code [TIME]} (timed-out). Failed tests
  * include the assertion message. A footer line shows totals.
  */
 public final class ConsoleReporter {

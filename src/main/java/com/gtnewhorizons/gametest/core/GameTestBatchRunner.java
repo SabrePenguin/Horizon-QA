@@ -15,8 +15,6 @@ import net.minecraft.world.WorldServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-
 import com.gtnewhorizons.gametest.GameTestJvmFlags;
 import com.gtnewhorizons.gametest.GameTestMod;
 import com.gtnewhorizons.gametest.report.ConsoleReporter;
@@ -24,6 +22,8 @@ import com.gtnewhorizons.gametest.report.JUnitXmlReporter;
 import com.gtnewhorizons.gametest.structure.HybridStructureLoader;
 import com.gtnewhorizons.gametest.structure.HybridStructureTemplate;
 import com.gtnewhorizons.gametest.structure.StructurePlacer;
+
+import cpw.mods.fml.common.FMLCommonHandler;
 
 /**
  * Orchestrates sequential batch execution: for each batch, calls {@code @BeforeBatch} methods,
@@ -111,7 +111,8 @@ public class GameTestBatchRunner {
             long requiredFailures = countRequiredFailures();
             int exitCode = (int) Math.min(requiredFailures, 127);
             LOG.info("CI mode: exiting with code {} ({} required test(s) failed).", exitCode, requiredFailures);
-            FMLCommonHandler.instance().exitJava(exitCode, false);
+            FMLCommonHandler.instance()
+                .exitJava(exitCode, false);
         }
     }
 
@@ -159,7 +160,9 @@ public class GameTestBatchRunner {
         int chunkSizeZ = Math.max(sizeZ, GameTestGridLayout.DEFAULT_CELL_SIZE);
         GameTestMod.CHUNK_LOADER.forceChunks(
             world,
-            origin[0], origin[1], origin[2],
+            origin[0],
+            origin[1],
+            origin[2],
             origin[0] + chunkSizeX - 1,
             origin[1] + Math.max(sizeY, 1) - 1,
             origin[2] + chunkSizeZ - 1);
@@ -174,7 +177,8 @@ public class GameTestBatchRunner {
     }
 
     private static HybridStructureTemplate loadTemplate(GameTestDefinition def) {
-        if (def.getTemplateName().isEmpty()) return null;
+        if (def.getTemplateName()
+            .isEmpty()) return null;
         try {
             return HybridStructureLoader.load(def.getTemplateName());
         } catch (IOException e) {

@@ -20,12 +20,13 @@ public final class GameTestCommandUtils {
      * Returns the first {@link CellRecord} whose AABB contains the given world-space
      * block coordinates, or {@code null} if none match.
      */
-    public static CellRecord findTestContaining(int x, int y, int z,
-            Collection<CellRecord> cells) {
+    public static CellRecord findTestContaining(int x, int y, int z, Collection<CellRecord> cells) {
         for (CellRecord cell : cells) {
             if (x >= cell.minX && x <= cell.maxX
-                    && y >= cell.minY && y <= cell.maxY
-                    && z >= cell.minZ && z <= cell.maxZ) {
+                && y >= cell.minY
+                && y <= cell.maxY
+                && z >= cell.minZ
+                && z <= cell.maxZ) {
                 return cell;
             }
         }
@@ -37,8 +38,7 @@ public final class GameTestCommandUtils {
      * their look direction and returns the first {@link CellRecord} whose AABB intersects
      * the ray, or {@code null} if none do.
      */
-    public static CellRecord findTestAlongLook(EntityPlayer player,
-            Collection<CellRecord> cells) {
+    public static CellRecord findTestAlongLook(EntityPlayer player, Collection<CellRecord> cells) {
         double ox = player.posX;
         double oy = player.posY + player.eyeHeight;
         double oz = player.posZ;
@@ -59,8 +59,7 @@ public final class GameTestCommandUtils {
      * Returns the {@link CellRecord} nearest (by cell-center distance) to the given
      * position, or {@code null} if {@code cells} is empty.
      */
-    public static CellRecord findNearestTest(int x, int y, int z,
-            Collection<CellRecord> cells) {
+    public static CellRecord findNearestTest(int x, int y, int z, Collection<CellRecord> cells) {
         CellRecord nearest = null;
         double nearestDistSq = Double.MAX_VALUE;
         for (CellRecord cell : cells) {
@@ -77,8 +76,8 @@ public final class GameTestCommandUtils {
         return nearest;
     }
 
-    private static boolean rayIntersectsAABB(double ox, double oy, double oz,
-            double fx, double fy, double fz, CellRecord cell) {
+    private static boolean rayIntersectsAABB(double ox, double oy, double oz, double fx, double fy, double fz,
+        CellRecord cell) {
         double dx = fx - ox, dy = fy - oy, dz = fz - oz;
         double tmin = 0.0, tmax = 1.0;
 
@@ -87,7 +86,11 @@ public final class GameTestCommandUtils {
         } else {
             double t1 = (cell.minX - ox) / dx;
             double t2 = (cell.maxX + 1.0 - ox) / dx;
-            if (t1 > t2) { double tmp = t1; t1 = t2; t2 = tmp; }
+            if (t1 > t2) {
+                double tmp = t1;
+                t1 = t2;
+                t2 = tmp;
+            }
             tmin = Math.max(tmin, t1);
             tmax = Math.min(tmax, t2);
             if (tmin > tmax) return false;
@@ -98,7 +101,11 @@ public final class GameTestCommandUtils {
         } else {
             double t1 = (cell.minY - oy) / dy;
             double t2 = (cell.maxY + 1.0 - oy) / dy;
-            if (t1 > t2) { double tmp = t1; t1 = t2; t2 = tmp; }
+            if (t1 > t2) {
+                double tmp = t1;
+                t1 = t2;
+                t2 = tmp;
+            }
             tmin = Math.max(tmin, t1);
             tmax = Math.min(tmax, t2);
             if (tmin > tmax) return false;
@@ -109,7 +116,11 @@ public final class GameTestCommandUtils {
         } else {
             double t1 = (cell.minZ - oz) / dz;
             double t2 = (cell.maxZ + 1.0 - oz) / dz;
-            if (t1 > t2) { double tmp = t1; t1 = t2; t2 = tmp; }
+            if (t1 > t2) {
+                double tmp = t1;
+                t1 = t2;
+                t2 = tmp;
+            }
             tmin = Math.max(tmin, t1);
             tmax = Math.min(tmax, t2);
             if (tmin > tmax) return false;
@@ -138,10 +149,8 @@ public final class GameTestCommandUtils {
         /** Inclusive world-space AABB of this cell (block coordinates). */
         public final int minX, minY, minZ, maxX, maxY, maxZ;
 
-        public CellRecord(String testId,
-                int originX, int originY, int originZ,
-                int minX, int minY, int minZ,
-                int maxX, int maxY, int maxZ) {
+        public CellRecord(String testId, int originX, int originY, int originZ, int minX, int minY, int minZ, int maxX,
+            int maxY, int maxZ) {
             this.testId = testId;
             this.originX = originX;
             this.originY = originY;

@@ -8,7 +8,8 @@ import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
  * {@code true} means the tool has been applied (no issue), {@code false} means
  * maintenance is needed (issue present).
  *
- * <p>{@link GTNHGameTestHelper#assertMachineHasIssues} checks that the corresponding
+ * <p>
+ * {@link GTNHGameTestHelper#assertMachineHasIssues} checks that the corresponding
  * field is {@code false} (i.e. that there IS an issue for that type).
  */
 public enum MaintenanceType {

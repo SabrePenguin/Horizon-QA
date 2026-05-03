@@ -14,13 +14,15 @@ import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
  * hatch's internal buffer once per simulated tick during a {@link TimeWarpHandler} fast-forward
  * pass.
  *
- * <p>Energy is injected via {@link IGregTechTileEntity#increaseStoredEnergyUnits}, which is
+ * <p>
+ * Energy is injected via {@link IGregTechTileEntity#increaseStoredEnergyUnits}, which is
  * available on all GT tile entities through
  * {@code IGregTechTileEntity → ICoverable → IBasicEnergyContainer}. This bypasses
  * voltage-tier checks intentionally — the goal is to simulate a "perfect" power supply for
  * deterministic test outcomes.
  *
- * <p>Completed jobs (remaining ticks == 0) are pruned automatically.
+ * <p>
+ * Completed jobs (remaining ticks == 0) are pruned automatically.
  */
 public class VirtualEUDynamo {
 
@@ -37,8 +39,8 @@ public class VirtualEUDynamo {
      * @param amperage      amps per tick
      * @param durationTicks how many simulated ticks to inject
      */
-    public void addJob(WorldServer world, int absX, int absY, int absZ,
-        long voltage, long amperage, int durationTicks) {
+    public void addJob(WorldServer world, int absX, int absY, int absZ, long voltage, long amperage,
+        int durationTicks) {
         jobs.add(new EUSupplyJob(world, absX, absY, absZ, voltage, amperage, durationTicks));
     }
 
@@ -82,8 +84,7 @@ public class VirtualEUDynamo {
         final long amperage;
         int remainingTicks;
 
-        EUSupplyJob(WorldServer world, int absX, int absY, int absZ,
-            long voltage, long amperage, int durationTicks) {
+        EUSupplyJob(WorldServer world, int absX, int absY, int absZ, long voltage, long amperage, int durationTicks) {
             this.world = world;
             this.absX = absX;
             this.absY = absY;

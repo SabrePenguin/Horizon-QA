@@ -2,11 +2,11 @@ package com.gtnewhorizons.gametest.visual;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 
 import com.gtnewhorizons.gametest.item.ItemGameTestWand;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 
 /**
  * Left-click interception for the GameTest Wand: stores Pos1 and cancels breaking the clicked

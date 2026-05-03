@@ -12,9 +12,11 @@ import com.gtnewhorizons.gametest.visual.drawables.GhostBlockDiff;
  * {@link GameTestOverlayRenderer}. All storage uses {@link CopyOnWriteArrayList}
  * so server-thread writes and render-thread reads are safely concurrent.
  *
- * <p>All methods are no-ops in headless CI mode ({@link GameTestJvmFlags#isEnabled()}).
+ * <p>
+ * All methods are no-ops in headless CI mode ({@link GameTestJvmFlags#isEnabled()}).
  *
- * <p><b>Note:</b> Per-cell status visuals (beacons, bounding boxes, floating text)
+ * <p>
+ * <b>Note:</b> Per-cell status visuals (beacons, bounding boxes, floating text)
  * are derived directly from {@code InteractiveTestSession} by the renderer on each frame
  * and do not need to be submitted here. This class handles supplemental overlays that
  * test code or helpers may add explicitly — currently ghost-block diffs.

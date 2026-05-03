@@ -6,28 +6,30 @@ import com.gtnewhorizons.gametest.api.annotation.GameTest;
 import com.gtnewhorizons.gametest.api.annotation.GameTestHolder;
 import com.gtnewhorizons.gametest.api.gt.GTNHGameTestHelper;
 import com.gtnewhorizons.gametest.api.gt.MaintenanceType;
+
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.TierEU;
-import gregtech.api.enums.VoltageIndex;
 
 /**
  * Example tests demonstrating the Phase 9 GTNH-specific helper API.
  *
- * <p>These tests require:
+ * <p>
+ * These tests require:
  * <ul>
- *   <li>GT5-Unofficial to be present in the runtime classpath</li>
- *   <li>Structure templates exported via the GameTest Wand (Phase 6) and placed under
- *       {@code assets/gametestexamples/gameteststructures/}</li>
+ * <li>GT5-Unofficial to be present in the runtime classpath</li>
+ * <li>Structure templates exported via the GameTest Wand (Phase 6) and placed under
+ * {@code assets/gametestexamples/gameteststructures/}</li>
  * </ul>
  *
- * <p>The {@code ebf} template captures a fully assembled Electric Blast Furnace.
+ * <p>
+ * The {@code ebf} template captures a fully assembled Electric Blast Furnace.
  * Layers are stored bottom-to-top (layer index 0 = lowest Y of the selected region).
  * All positions are 0-based from the structure origin:
  * <ul>
- *   <li>controller at (0, 0, 0)</li>
- *   <li>energy hatch at (0, 1, 0)</li>
- *   <li>input bus at (0, 0, 1)</li>
- *   <li>output bus at (0, 0, 2)</li>
+ * <li>controller at (0, 0, 0)</li>
+ * <li>energy hatch at (0, 1, 0)</li>
+ * <li>input bus at (0, 0, 1)</li>
+ * <li>output bus at (0, 0, 2)</li>
  * </ul>
  */
 @GameTestHolder(value = "gametestexamples")
@@ -37,7 +39,8 @@ public class GTNHExampleTests {
      * Verifies that an EBF structure template is formed and can smelt Rutile Dust into Titanium
      * using time-warp EU supply — the whole recipe runs in milliseconds, not real ticks.
      *
-     * <p>Template: {@code assets/gametestexamples/gameteststructures/ebf.json}
+     * <p>
+     * Template: {@code assets/gametestexamples/gameteststructures/ebf.json}
      */
     @GameTest(template = "ebf", timeoutTicks = 1500, batch = "gtnh")
     public static void testTitaniumSmelting(GameTestHelper baseHelper) {
@@ -47,7 +50,6 @@ public class GTNHExampleTests {
         TestPos energyHatch = new TestPos(0, 0, 0);
         TestPos inputBus = new TestPos(1, 0, 1);
         TestPos outputBus = new TestPos(1, 0, 2);
-
 
         helper.assertMachineFormed(controller);
         helper.fixAllMaintenanceIssues(controller);
@@ -70,8 +72,7 @@ public class GTNHExampleTests {
      * This test is {@code required=false} because it depends on a template intentionally
      * saved with a degraded machine.
      */
-    @GameTest(template = "ebf", timeoutTicks = 20, batch = "gtnh",
-        required = false)
+    @GameTest(template = "ebf", timeoutTicks = 20, batch = "gtnh", required = false)
     public static void testMaintenanceIssueDetection(GameTestHelper baseHelper) {
         GTNHGameTestHelper helper = baseHelper.gtnh();
         TestPos controller = new TestPos(1, 0, 0);

@@ -32,7 +32,8 @@ public class GameTestGridLayout {
     /**
      * Reserve and return the next cell origin as {@code [x, y, z]}.
      *
-     * <p>The cell footprint is dynamically sized based on the template, with a minimum
+     * <p>
+     * The cell footprint is dynamically sized based on the template, with a minimum
      * enforced size of {@link #DEFAULT_CELL_SIZE}. Tests smaller than 5x5 will take up
      * the space of a 5x5 test. {@value #INTER_CELL_GAP} blocks of clear separation are
      * added on the far X and Z edges so adjacent cells never touch.

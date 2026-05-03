@@ -24,18 +24,20 @@ import com.gtnewhorizons.gametest.structure.StructurePlacer;
 /**
  * Singleton session state for interactive {@code /gametest} usage.
  *
- * <p>Unlike {@link GameTestBatchRunner} (which runs headless CI suites and exits the server),
+ * <p>
+ * Unlike {@link GameTestBatchRunner} (which runs headless CI suites and exits the server),
  * this class:
  * <ul>
- *   <li>Keeps test cells visible in the world after completion so the developer can inspect
- *       them.</li>
- *   <li>Tracks which tests have failed across multiple re-runs, enabling
- *       {@code /gametest runfailed}.</li>
- *   <li>Supports launching individual tests or full suites on demand from commands.</li>
- *   <li>Never exits the server.</li>
+ * <li>Keeps test cells visible in the world after completion so the developer can inspect
+ * them.</li>
+ * <li>Tracks which tests have failed across multiple re-runs, enabling
+ * {@code /gametest runfailed}.</li>
+ * <li>Supports launching individual tests or full suites on demand from commands.</li>
+ * <li>Never exits the server.</li>
  * </ul>
  *
- * <p>The session is reset at the beginning of each {@code serverStarting} event via
+ * <p>
+ * The session is reset at the beginning of each {@code serverStarting} event via
  * {@link #reset()}, so a dev-environment server restart always starts fresh.
  */
 public class InteractiveTestSession {
@@ -118,8 +120,7 @@ public class InteractiveTestSession {
             int[] origin = grid.allocateOrigin(sizeX, sizeZ);
             GameTestInstance inst = spawnTestAt(def, world, origin[0], origin[1], origin[2], template);
             runner.addInstance(inst);
-            LOG.info("[GameTest] Launched '{}' at ({}, {}, {}).",
-                    def.getTestId(), origin[0], origin[1], origin[2]);
+            LOG.info("[GameTest] Launched '{}' at ({}, {}, {}).", def.getTestId(), origin[0], origin[1], origin[2]);
         }
         LOG.info("[GameTest] Launched {} test(s) total.", defs.size());
     }
@@ -142,11 +143,14 @@ public class InteractiveTestSession {
         ensureRunnerRegistered();
         clearCell(world, existing);
         HybridStructureTemplate template = loadTemplate(def);
-        GameTestInstance inst = spawnTestAt(def, world,
-                existing.originX, existing.originY, existing.originZ, template);
+        GameTestInstance inst = spawnTestAt(def, world, existing.originX, existing.originY, existing.originZ, template);
         runner.addInstance(inst);
-        LOG.info("[GameTest] Re-launched '{}' in-place at ({}, {}, {}).",
-                def.getTestId(), existing.originX, existing.originY, existing.originZ);
+        LOG.info(
+            "[GameTest] Re-launched '{}' in-place at ({}, {}, {}).",
+            def.getTestId(),
+            existing.originX,
+            existing.originY,
+            existing.originZ);
     }
 
     /**
@@ -207,9 +211,8 @@ public class InteractiveTestSession {
         return lastInstances.get(testId);
     }
 
-    private GameTestInstance spawnTestAt(GameTestDefinition def, WorldServer world,
-            int originX, int originY, int originZ,
-            HybridStructureTemplate template) {
+    private GameTestInstance spawnTestAt(GameTestDefinition def, WorldServer world, int originX, int originY,
+        int originZ, HybridStructureTemplate template) {
 
         int sizeX = template != null ? template.getSizeX() : 0;
         int sizeY = template != null ? template.getSizeY() : 0;
@@ -219,22 +222,30 @@ public class InteractiveTestSession {
         int cellSizeY = sizeY > 0 ? sizeY : GameTestGridLayout.DEFAULT_CELL_SIZE;
         int cellSizeZ = sizeZ > 0 ? sizeZ : GameTestGridLayout.DEFAULT_CELL_SIZE;
 
-        GameTestMod.CHUNK_LOADER.forceChunks(world,
-                originX, originY, originZ,
-                originX + cellSizeX - 1,
-                originY + cellSizeY - 1,
-                originZ + cellSizeZ - 1);
+        GameTestMod.CHUNK_LOADER.forceChunks(
+            world,
+            originX,
+            originY,
+            originZ,
+            originX + cellSizeX - 1,
+            originY + cellSizeY - 1,
+            originZ + cellSizeZ - 1);
 
         if (template != null) {
             StructurePlacer.place(template, world, originX, originY, originZ);
         }
 
-        CellRecord cell = new CellRecord(def.getTestId(),
-                originX, originY, originZ,
-                originX, originY, originZ,
-                originX + cellSizeX - 1,
-                originY + cellSizeY - 1,
-                originZ + cellSizeZ - 1);
+        CellRecord cell = new CellRecord(
+            def.getTestId(),
+            originX,
+            originY,
+            originZ,
+            originX,
+            originY,
+            originZ,
+            originX + cellSizeX - 1,
+            originY + cellSizeY - 1,
+            originZ + cellSizeZ - 1);
         knownCells.put(def.getTestId(), cell);
 
         GameTestInstance inst = new GameTestInstance(def, originX, originY, originZ);
@@ -256,12 +267,16 @@ public class InteractiveTestSession {
     }
 
     private static HybridStructureTemplate loadTemplate(GameTestDefinition def) {
-        if (def.getTemplateName().isEmpty()) return null;
+        if (def.getTemplateName()
+            .isEmpty()) return null;
         try {
             return HybridStructureLoader.load(def.getTemplateName());
         } catch (IOException e) {
-            LOG.error("[GameTest] Failed to load template '{}' for test '{}': {}",
-                    def.getTemplateName(), def.getTestId(), e.getMessage());
+            LOG.error(
+                "[GameTest] Failed to load template '{}' for test '{}': {}",
+                def.getTemplateName(),
+                def.getTestId(),
+                e.getMessage());
             return null;
         }
     }
