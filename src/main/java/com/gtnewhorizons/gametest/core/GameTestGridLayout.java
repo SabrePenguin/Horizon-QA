@@ -4,13 +4,14 @@ package com.gtnewhorizons.gametest.core;
  * Allocates non-overlapping world-space origins for test cells on a 2-D grid.
  * Tests fill left-to-right up to {@value #MAX_PER_ROW} columns, then wrap to the
  * next row. Cell dimensions equal the structure template size exactly (plus
- * {@value #INTER_CELL_GAP} blocks of clear separation). Tests without a template
- * receive a {@value #DEFAULT_CELL_SIZE}-block square cell. Rows advance by the
- * deepest cell seen in the previous row so that variable-size cells never overlap.
+ * {@value #INTER_CELL_GAP} blocks of clear separation), with a minimum footprint
+ * of {@value #DEFAULT_CELL_SIZE} to ensure consistent spacing for small tests.
+ * Rows advance by the deepest cell seen in the previous row so that variable-size
+ * cells never overlap.
  */
 public class GameTestGridLayout {
 
-    /** Cell footprint used when a test has no structure template. */
+    /** Cell footprint used when a test has no structure template or is smaller than this. */
     static final int DEFAULT_CELL_SIZE = 5;
     /** Clear blocks of separation between adjacent cells (horizontal and depth). */
     static final int INTER_CELL_GAP = 3;
@@ -31,18 +32,18 @@ public class GameTestGridLayout {
     /**
      * Reserve and return the next cell origin as {@code [x, y, z]}.
      *
-     * <p>If a template size is supplied ({@code > 0}), that exact size is used.
-     * If zero (no template), {@link #DEFAULT_CELL_SIZE} is used instead.
-     * {@value #INTER_CELL_GAP} blocks of clear separation are added on the far X and Z
-     * edges so adjacent cells never touch.
+     * <p>The cell footprint is dynamically sized based on the template, with a minimum
+     * enforced size of {@link #DEFAULT_CELL_SIZE}. Tests smaller than 5x5 will take up
+     * the space of a 5x5 test. {@value #INTER_CELL_GAP} blocks of clear separation are
+     * added on the far X and Z edges so adjacent cells never touch.
      *
      * @param templateSizeX template width along X (0 = no template)
      * @param templateSizeZ template depth along Z (0 = no template)
      * @return absolute world-space {@code [x, y, z]} of the new cell origin
      */
     public int[] allocateOrigin(int templateSizeX, int templateSizeZ) {
-        int cellW = (templateSizeX > 0 ? templateSizeX : DEFAULT_CELL_SIZE) + INTER_CELL_GAP;
-        int cellD = (templateSizeZ > 0 ? templateSizeZ : DEFAULT_CELL_SIZE) + INTER_CELL_GAP;
+        int cellW = Math.max(templateSizeX, DEFAULT_CELL_SIZE) + INTER_CELL_GAP;
+        int cellD = Math.max(templateSizeZ, DEFAULT_CELL_SIZE) + INTER_CELL_GAP;
 
         if (rowCount >= MAX_PER_ROW) {
             rowX = 0;
