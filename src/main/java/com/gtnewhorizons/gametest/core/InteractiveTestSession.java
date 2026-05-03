@@ -244,7 +244,7 @@ public class InteractiveTestSession {
         int sizeZ = template != null ? template.getSizeZ() : 0;
 
         int cellSizeX = sizeX > 0 ? sizeX : GameTestGridLayout.DEFAULT_CELL_SIZE;
-        int cellSizeY = Math.max(sizeY, GameTestGridLayout.DEFAULT_CELL_SIZE);
+        int cellSizeY = sizeY > 0 ? sizeY : GameTestGridLayout.DEFAULT_CELL_SIZE;
         int cellSizeZ = sizeZ > 0 ? sizeZ : GameTestGridLayout.DEFAULT_CELL_SIZE;
 
         GameTestMod.CHUNK_LOADER.forceChunks(world,
