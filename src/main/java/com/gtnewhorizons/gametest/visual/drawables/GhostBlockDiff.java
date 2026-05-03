@@ -73,6 +73,11 @@ public final class GhostBlockDiff {
         GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glPolygonOffset(0f, 0f);
         GL11.glEnable(GL11.GL_CULL_FACE);
+
+        // Small floating label directly above this ghost block.
+        if (label != null) {
+            FloatingText.render(x + 0.5, y + 1.5, z + 0.5, new String[] { label }, 0.5f);
+        }
     }
 
     private void face(Tessellator tess,

@@ -31,13 +31,16 @@ public final class FloatingText {
     /**
      * Draw text lines centered at the given world position.
      *
-     * @param wx/wy/wz world-space anchor (text is centered horizontally, top-aligned)
-     * @param lines    one or more lines; MC color codes ({@code §a}, {@code §c}, …) accepted
+     * @param wx/wy/wz       world-space anchor (text is centered horizontally, top-aligned)
+     * @param lines          one or more lines; MC color codes ({@code §a}, {@code §c}, …) accepted
+     * @param scaleMultiplier multiplies the base scale (use &lt;1 for small labels, e.g. 0.5f)
      */
-    public static void render(double wx, double wy, double wz, String[] lines) {
+    public static void render(double wx, double wy, double wz, String[] lines, float scaleMultiplier) {
         if (lines == null || lines.length == 0) return;
         FontRenderer fr = Minecraft.getMinecraft().fontRenderer;
         if (fr == null) return;
+
+        float s = SCALE * scaleMultiplier;
 
         // Measure
         int maxW = 0;
@@ -54,7 +57,7 @@ public final class FloatingText {
         GL11.glRotatef(-RenderManager.instance.playerViewY, 0f, 1f, 0f);
         GL11.glRotatef( RenderManager.instance.playerViewX, 1f, 0f, 0f);
         // Scale: negative Y so text is right-side-up from the viewer's perspective
-        GL11.glScalef(-SCALE, -SCALE, SCALE);
+        GL11.glScalef(-s, -s, s);
 
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glEnable(GL11.GL_BLEND);
@@ -89,5 +92,12 @@ public final class FloatingText {
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         GL11.glPopMatrix();
+    }
+
+    /**
+     * Convenience overload at normal (1×) scale.
+     */
+    public static void render(double wx, double wy, double wz, String[] lines) {
+        render(wx, wy, wz, lines, 1.0f);
     }
 }

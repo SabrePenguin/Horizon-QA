@@ -110,22 +110,25 @@ public final class GameTestOverlayRenderer {
             FloatingText.render(bcx, cell.minY + TEXT_Y_LIFT, bcz,
                 buildLines(cell.testId, status, inst));
 
-            // Ghost block at the assertion-failure coordinate (if available)
+            // Ghost block at the assertion-failure coordinate (if available).
+            // Label (small text) shows the truncated failure message at the exact fail spot.
             if (inst.hasFailPosition()) {
+                String failLabel = null;
+                if (inst.getFailureCause() != null) {
+                    String m = inst.getFailureCause().getMessage();
+                    if (m != null && !m.isEmpty()) {
+                        failLabel = m.length() > 32 ? m.substring(0, 29) + "\u2026" : m;
+                    }
+                }
                 new GhostBlockDiff(
                     inst.getFailX(), inst.getFailY(), inst.getFailZ(),
-                    1.0f, 0.12f, 0.12f, null).render();
+                    1.0f, 0.12f, 0.12f, failLabel).render();
             }
         }
 
         // ── VisualManager ghost-block overlays ──────────────────────────────────────
         for (GhostBlockDiff ghost : VisualManager.getGhosts()) {
-            ghost.render();
-            if (ghost.label != null) {
-                FloatingText.render(
-                    ghost.x + 0.5, ghost.y + 1.5, ghost.z + 0.5,
-                    new String[] { ghost.label });
-            }
+            ghost.render(); // label (if any) is rendered at small scale inside GhostBlockDiff
         }
 
         GL11.glPopAttrib();
