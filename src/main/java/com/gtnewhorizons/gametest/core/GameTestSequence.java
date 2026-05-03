@@ -31,10 +31,6 @@ public class GameTestSequence {
         this.instance = instance;
     }
 
-    // -------------------------------------------------------------------------
-    // Builder methods
-    // -------------------------------------------------------------------------
-
     /** Advance the schedule by {@code ticks} without adding an event. */
     public GameTestSequence thenIdle(int ticks) {
         currentScheduledTick += ticks;
@@ -88,10 +84,6 @@ public class GameTestSequence {
         events.add(new SequenceEvent(currentScheduledTick, () -> instance.fail(message), false));
     }
 
-    // -------------------------------------------------------------------------
-    // Engine
-    // -------------------------------------------------------------------------
-
     /**
      * Called each tick by the owning {@link GameTestInstance}. Processes all events whose scheduled
      * tick has been reached.
@@ -104,20 +96,16 @@ public class GameTestSequence {
             if (head.conditional) {
                 try {
                     head.action.run();
-                    events.poll(); // condition passed — advance
+                    events.poll();
                 } catch (AssertionError e) {
-                    break; // not yet satisfied — retry next tick
+                    break;
                 }
             } else {
                 events.poll();
-                head.action.run(); // may throw GameTestAssertException — propagates to GameTestInstance
+                head.action.run();
             }
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Inner types
-    // -------------------------------------------------------------------------
 
     private static final class SequenceEvent {
 

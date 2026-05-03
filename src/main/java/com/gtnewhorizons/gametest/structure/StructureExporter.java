@@ -70,13 +70,11 @@ public final class StructureExporter {
         int sizeY = y2 - y1 + 1;
         int sizeZ = z2 - z1 + 1;
 
-        // ---- Phase 1: Scan world, collect block data and unique palette entries ----
         String[][][] blockNames = new String[sizeX][sizeY][sizeZ];
         int[][][] blockMetas = new int[sizeX][sizeY][sizeZ];
         NBTTagCompound tileData = new NBTTagCompound();
 
-        // TreeMap gives sorted (name@meta) keys for deterministic palette ordering
-        TreeMap<String, String> uniqueBlocks = new TreeMap<>(); // "name@meta" → label
+        TreeMap<String, String> sortedUniqueBlocks = new TreeMap<>();
 
         for (int x = 0; x < sizeX; x++) {
             for (int y = 0; y < sizeY; y++) {
@@ -97,8 +95,8 @@ public final class StructureExporter {
                         blockMetas[x][y][z] = meta;
 
                         String palKey = regName + "@" + meta;
-                        if (!uniqueBlocks.containsKey(palKey)) {
-                            uniqueBlocks.put(palKey, resolveLabel(block, meta));
+                        if (!sortedUniqueBlocks.containsKey(palKey)) {
+                            sortedUniqueBlocks.put(palKey, resolveLabel(block, meta));
                         }
 
                         TileEntity te = world.getTileEntity(wx, wy, wz);
@@ -115,10 +113,9 @@ public final class StructureExporter {
             }
         }
 
-        // ---- Phase 2: Build sorted palette with character key assignments ----
-        if (uniqueBlocks.size() > KEY_SEQUENCE.length()) {
+        if (sortedUniqueBlocks.size() > KEY_SEQUENCE.length()) {
             throw new IOException(
-                "Structure contains " + uniqueBlocks.size()
+                "Structure contains " + sortedUniqueBlocks.size()
                     + " unique block types, exceeding the maximum of "
                     + KEY_SEQUENCE.length());
         }
@@ -126,19 +123,16 @@ public final class StructureExporter {
         Map<String, Integer> indexMap = new LinkedHashMap<>();
         indexMap.put("minecraft:air@0", 0);
 
-        char[] keys = new char[uniqueBlocks.size() + 1];
+        char[] keys = new char[sortedUniqueBlocks.size() + 1];
         keys[0] = HybridStructureTemplate.AIR_KEY;
 
-        // Parallel lists for palette entries (excluding air)
-        List<char[]> palEntries = new ArrayList<>(); // each: {charKey} + name + metaStr + label (encoded in arrays
-                                                     // below)
         List<String> palNames = new ArrayList<>();
         List<Integer> palMetas = new ArrayList<>();
         List<String> palLabels = new ArrayList<>();
         List<Character> palKeys = new ArrayList<>();
 
         int idx = 1;
-        for (Map.Entry<String, String> entry : uniqueBlocks.entrySet()) {
+        for (Map.Entry<String, String> entry : sortedUniqueBlocks.entrySet()) {
             String palKey = entry.getKey();
             String label = entry.getValue();
 
@@ -157,7 +151,6 @@ public final class StructureExporter {
             idx++;
         }
 
-        // ---- Phase 3: Build and write JSON with compact formatting ----
         if (!outputDir.exists()) {
             outputDir.mkdirs();
         }
@@ -168,7 +161,6 @@ public final class StructureExporter {
             writer.write("  \"format_version\": " + VERSION_NUMBER + ",\n");
             writer.write("  \"size\": [" + sizeX + ", " + sizeY + ", " + sizeZ + "],\n");
 
-            // Palette — one compact entry per line
             writer.write("  \"palette\": {");
             if (palKeys.isEmpty()) {
                 writer.write("},\n");
@@ -193,7 +185,6 @@ public final class StructureExporter {
                 writer.write("  },\n");
             }
 
-            // Layers — each Y-slice is an array of Z-row character strings
             writer.write("  \"layers\": [\n");
             for (int y = 0; y < sizeY; y++) {
                 writer.write("    [\n");
@@ -217,7 +208,6 @@ public final class StructureExporter {
         }
         LOG.info("StructureExporter: wrote layout → {}", jsonFile.getAbsolutePath());
 
-        // ---- Write companion TileEntity NBT ----
         File nbtFile = new File(outputDir, name + "_tiles.nbt");
         try (FileOutputStream fos = new FileOutputStream(nbtFile)) {
             CompressedStreamTools.writeCompressed(tileData, fos);

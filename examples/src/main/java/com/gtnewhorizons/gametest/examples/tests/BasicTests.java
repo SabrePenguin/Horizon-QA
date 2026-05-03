@@ -31,23 +31,11 @@ import com.gtnewhorizons.gametest.api.annotation.GameTestHolder;
 @GameTestHolder("gametestexamples")
 public class BasicTests {
 
-    // -------------------------------------------------------------------------
-    // Batch lifecycle
-    // -------------------------------------------------------------------------
-
     @BeforeBatch("")
-    public static void setupBatch() {
-        // Nothing to set up for these trivial tests; demonstrates the hook works.
-    }
+    public static void setupBatch() {}
 
     @AfterBatch("")
-    public static void teardownBatch() {
-        // Nothing to tear down.
-    }
-
-    // -------------------------------------------------------------------------
-    // Tests
-    // -------------------------------------------------------------------------
+    public static void teardownBatch() {}
 
     /** Idle for 10 ticks then succeed — verifies the sequence engine advances correctly. */
     @GameTest(timeoutTicks = 40)
@@ -76,7 +64,5 @@ public class BasicTests {
      * not fail the overall run.
      */
     @GameTest(timeoutTicks = 10, required = false)
-    public static void timeoutTest(GameTestHelper helper) {
-        // Intentionally does nothing — should time out after 10 ticks.
-    }
+    public static void timeoutTest(GameTestHelper helper) {}
 }

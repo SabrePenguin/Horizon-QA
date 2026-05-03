@@ -131,7 +131,6 @@ public final class SelectionOutlineClientRenderer {
         GL11.glPopMatrix();
     }
 
-    /** Ghost wireframe through blocks: dim white, low opacity (depth off). */
     private static void renderGhostWireframe(SelectionBounds b) {
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
@@ -148,7 +147,6 @@ public final class SelectionOutlineClientRenderer {
         tess.draw();
     }
 
-    /** Ghost faces through blocks (depth still off). */
     private static void renderGhostFaces(SelectionBounds b, float breathe, float colorScale) {
         float alphaThrough = clamp01(FACE_THROUGH_ALPHA_CENTER + FACE_THROUGH_ALPHA_PULSE * breathe);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
@@ -162,7 +160,6 @@ public final class SelectionOutlineClientRenderer {
         tess.draw();
     }
 
-    /** Hull faces: depth-tested shell (expanded hull + polygon offset vs z-fighting). */
     private static void renderDepthTestedFaces(SelectionBounds b, float breathe, float colorScale) {
         float alpha = clamp01(FACE_ALPHA_CENTER + FACE_ALPHA_PULSE * breathe);
         GL11.glEnable(GL11.GL_DEPTH_TEST);
@@ -178,7 +175,6 @@ public final class SelectionOutlineClientRenderer {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
-    /** White wireframe (depth-tested; line offset vs coplanar terrain). */
     private static void renderDepthTestedWireframe(SelectionBounds b) {
         GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_LINE);
@@ -274,7 +270,6 @@ public final class SelectionOutlineClientRenderer {
     private static void addTrueWireframeEdges(Tessellator tess,
         double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
 
-        // Bottom face
         tess.addVertex(minX, minY, minZ);
         tess.addVertex(maxX, minY, minZ);
         tess.addVertex(maxX, minY, minZ);
@@ -284,7 +279,6 @@ public final class SelectionOutlineClientRenderer {
         tess.addVertex(minX, minY, maxZ);
         tess.addVertex(minX, minY, minZ);
 
-        // Top face
         tess.addVertex(minX, maxY, minZ);
         tess.addVertex(maxX, maxY, minZ);
         tess.addVertex(maxX, maxY, minZ);
@@ -294,7 +288,6 @@ public final class SelectionOutlineClientRenderer {
         tess.addVertex(minX, maxY, maxZ);
         tess.addVertex(minX, maxY, minZ);
 
-        // Vertical pillars
         tess.addVertex(minX, minY, minZ);
         tess.addVertex(minX, maxY, minZ);
         tess.addVertex(maxX, minY, minZ);

@@ -76,7 +76,6 @@ public final class HybridStructureLoader {
         String jsonResource = "/assets/" + namespace + "/gameteststructures/" + path + ".json";
         String nbtResource = "/assets/" + namespace + "/gameteststructures/" + path + "_tiles.nbt";
 
-        // ---- Load JSON block layout ----
         InputStream jsonStream = HybridStructureLoader.class.getResourceAsStream(jsonResource);
         if (jsonStream == null) {
             throw new IOException("Structure template resource not found: " + jsonResource);
@@ -90,7 +89,6 @@ public final class HybridStructureLoader {
         try (InputStreamReader reader = new InputStreamReader(jsonStream, StandardCharsets.UTF_8)) {
             JsonObject root = GSON.fromJson(reader, JsonObject.class);
 
-            // ---- Size ----
             JsonArray sizeArr = root.getAsJsonArray("size");
             sizeX = sizeArr.get(0)
                 .getAsInt();
@@ -99,7 +97,6 @@ public final class HybridStructureLoader {
             sizeZ = sizeArr.get(2)
                 .getAsInt();
 
-            // ---- Palette (JSON object: char key → {name, meta, label?}) ----
             JsonElement paletteElement = root.get("palette");
             if (paletteElement == null || !paletteElement.isJsonObject()) {
                 throw new IOException(
@@ -154,7 +151,6 @@ public final class HybridStructureLoader {
                 paletteKeys[i] = keyList.get(i);
             }
 
-            // ---- Layers (array of Y-slices, each an array of Z-row strings) ----
             if (!root.has("layers")) {
                 throw new IOException(
                     "Template '" + templateName
@@ -223,7 +219,6 @@ public final class HybridStructureLoader {
             }
         }
 
-        // ---- Load optional TileEntity NBT ----
         NBTTagCompound tileData = null;
         InputStream nbtStream = HybridStructureLoader.class.getResourceAsStream(nbtResource);
         if (nbtStream != null) {

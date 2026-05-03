@@ -69,8 +69,6 @@ public final class JUnitXmlReporter {
     private static void writeTestCase(PrintWriter pw, GameTestInstance inst) {
         String testId = inst.getDefinition()
             .getTestId();
-        // testId format is "namespace.ClassName#methodName" or "batch:id" — use as-is for name,
-        // derive classname from everything before the last dot/hash.
         int sep = Math.max(testId.lastIndexOf('.'), testId.lastIndexOf('#'));
         String classname = sep > 0 ? testId.substring(0, sep) : "gametest";
         String name = sep > 0 ? testId.substring(sep + 1) : testId;

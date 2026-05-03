@@ -57,17 +57,14 @@ public final class HighlightBox {
             Tessellator tess = Tessellator.instance;
             tess.startDrawing(GL11.GL_LINES);
 
-            // Bottom face
             line(tess, minX, minY, minZ, maxX, minY, minZ, r, g, b, alpha);
             line(tess, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, alpha);
             line(tess, maxX, minY, maxZ, minX, minY, maxZ, r, g, b, alpha);
             line(tess, minX, minY, maxZ, minX, minY, minZ, r, g, b, alpha);
-            // Top face
             line(tess, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, alpha);
             line(tess, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, alpha);
             line(tess, maxX, maxY, maxZ, minX, maxY, maxZ, r, g, b, alpha);
             line(tess, minX, maxY, maxZ, minX, maxY, minZ, r, g, b, alpha);
-            // Verticals
             line(tess, minX, minY, minZ, minX, maxY, minZ, r, g, b, alpha);
             line(tess, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, alpha);
             line(tess, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, alpha);

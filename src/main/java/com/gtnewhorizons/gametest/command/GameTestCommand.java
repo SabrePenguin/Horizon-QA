@@ -127,10 +127,6 @@ public class GameTestCommand extends CommandBase {
         return null;
     }
 
-    // =========================================================================
-    // /gametest run <id>
-    // =========================================================================
-
     private void handleRun(ICommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.addChatMessage(new ChatComponentText(
@@ -151,10 +147,6 @@ public class GameTestCommand extends CommandBase {
             EnumChatFormatting.GREEN + "Launched: "
                 + EnumChatFormatting.YELLOW + def.getTestId()));
     }
-
-    // =========================================================================
-    // /gametest runall [namespace]
-    // =========================================================================
 
     private void handleRunAll(ICommandSender sender, String[] args) {
         List<GameTestDefinition> tests;
@@ -184,10 +176,6 @@ public class GameTestCommand extends CommandBase {
                 + EnumChatFormatting.GREEN + " test(s)."));
     }
 
-    // =========================================================================
-    // /gametest runfailed
-    // =========================================================================
-
     private void handleRunFailed(ICommandSender sender, String[] args) {
         Set<String> failedIds = InteractiveTestSession.get().getFailedIds();
         if (failedIds.isEmpty()) {
@@ -214,10 +202,6 @@ public class GameTestCommand extends CommandBase {
                 + EnumChatFormatting.GREEN + " failed test(s)."));
     }
 
-    // =========================================================================
-    // /gametest runthis
-    // =========================================================================
-
     private void handleRunThis(ICommandSender sender, String[] args) {
         EntityPlayer player = requirePlayer(sender);
         if (player == null) return;
@@ -237,10 +221,6 @@ public class GameTestCommand extends CommandBase {
         }
         relaunchCell(sender, cell);
     }
-
-    // =========================================================================
-    // /gametest runthat
-    // =========================================================================
 
     private void handleRunThat(ICommandSender sender, String[] args) {
         EntityPlayer player = requirePlayer(sender);
@@ -273,10 +253,6 @@ public class GameTestCommand extends CommandBase {
                 + EnumChatFormatting.YELLOW + def.getTestId()));
     }
 
-    // =========================================================================
-    // /gametest pos
-    // =========================================================================
-
     private void handlePos(ICommandSender sender, String[] args) {
         EntityPlayer player = requirePlayer(sender);
         if (player == null) return;
@@ -285,7 +261,6 @@ public class GameTestCommand extends CommandBase {
         int py = (int) Math.floor(player.posY);
         int pz = (int) Math.floor(player.posZ);
 
-        // Prefer a cell the player is actually inside; fall back to nearest.
         CellRecord cell = GameTestCommandUtils.findTestContaining(px, py, pz,
             InteractiveTestSession.get().getKnownCells());
         if (cell == null) {
@@ -315,7 +290,6 @@ public class GameTestCommand extends CommandBase {
                 + EnumChatFormatting.WHITE
                 + String.format("(%d, %d, %d)", relX, relY, relZ)));
 
-        // Clickable line — puts the helper.absolute() call into the chat input box.
         ChatComponentText clickable = new ChatComponentText(
             EnumChatFormatting.GREEN + call
                 + EnumChatFormatting.GRAY + "  \u00ab click to copy to chat");
@@ -323,10 +297,6 @@ public class GameTestCommand extends CommandBase {
             .setChatClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, call)));
         sender.addChatMessage(clickable);
     }
-
-    // =========================================================================
-    // /gametest clearall
-    // =========================================================================
 
     private void handleClearAll(ICommandSender sender, String[] args) {
         int count = InteractiveTestSession.get().getKnownCells().size();
@@ -336,10 +306,6 @@ public class GameTestCommand extends CommandBase {
                 + EnumChatFormatting.YELLOW + count
                 + EnumChatFormatting.GREEN + " test cell(s)."));
     }
-
-    // =========================================================================
-    // /gametest export <name>
-    // =========================================================================
 
     private void handleExport(ICommandSender sender, String[] args) {
         if (args.length < 2) {
@@ -412,10 +378,6 @@ public class GameTestCommand extends CommandBase {
             GameTestMod.LOG.error("StructureExporter failed for '{}'", name, e);
         }
     }
-
-    // =========================================================================
-    // Shared helpers
-    // =========================================================================
 
     private static GameTestDefinition findDefinition(String testId) {
         for (GameTestDefinition def : GameTestRegistry.getAllTests()) {

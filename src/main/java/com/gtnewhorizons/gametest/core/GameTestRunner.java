@@ -72,14 +72,11 @@ public class GameTestRunner {
         }
 
         if (allDone && onAllDone != null) {
-            // CI / batch mode: fire the completion callback.
             running = false;
             Runnable callback = onAllDone;
             onAllDone = null;
             callback.run();
         } else if (allDone && !instances.isEmpty()) {
-            // Interactive mode (no completion callback): clean up done instances and go
-            // idle. The runner stays registered so addInstance() re-activates it cheaply.
             instances.clear();
             running = false;
         }

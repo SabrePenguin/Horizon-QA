@@ -109,7 +109,6 @@ public class GameTestBatchRunner {
 
         if (GameTestJvmFlags.isEnabled()) {
             long requiredFailures = countRequiredFailures();
-            // Cap at 127 so the value is a valid Unix exit code.
             int exitCode = (int) Math.min(requiredFailures, 127);
             LOG.info("CI mode: exiting with code {} ({} required test(s) failed).", exitCode, requiredFailures);
             FMLCommonHandler.instance().exitJava(exitCode, false);
@@ -188,22 +187,17 @@ public class GameTestBatchRunner {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Batch construction
-    // -------------------------------------------------------------------------
-
     private static List<Batch> buildBatches(List<GameTestDefinition> tests, Map<String, List<Method>> beforeMethods,
         Map<String, List<Method>> afterMethods) {
 
-        // Group tests by batch name while preserving insertion order
-        Map<String, List<GameTestDefinition>> groups = new LinkedHashMap<>();
+        Map<String, List<GameTestDefinition>> testsByBatch = new LinkedHashMap<>();
         for (GameTestDefinition def : tests) {
-            groups.computeIfAbsent(def.getBatch(), k -> new ArrayList<>())
+            testsByBatch.computeIfAbsent(def.getBatch(), k -> new ArrayList<>())
                 .add(def);
         }
 
         List<Batch> result = new ArrayList<>();
-        for (Map.Entry<String, List<GameTestDefinition>> entry : groups.entrySet()) {
+        for (Map.Entry<String, List<GameTestDefinition>> entry : testsByBatch.entrySet()) {
             String name = entry.getKey();
             List<Method> before = beforeMethods.getOrDefault(name, new ArrayList<>());
             List<Method> after = afterMethods.getOrDefault(name, new ArrayList<>());
@@ -211,10 +205,6 @@ public class GameTestBatchRunner {
         }
         return result;
     }
-
-    // -------------------------------------------------------------------------
-    // Inner type
-    // -------------------------------------------------------------------------
 
     private static final class Batch {
 

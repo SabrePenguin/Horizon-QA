@@ -5,9 +5,9 @@ import java.lang.reflect.Method;
 /** Immutable descriptor for a single {@code @GameTest} method. */
 public final class GameTestDefinition {
 
-    private final String testId; // "namespace:className.methodName"
+    private final String testId;
     private final Method method;
-    private final String templateName; // "" = no structure template
+    private final String templateName;
     private final int timeoutTicks;
     private final String batch;
     private final boolean required;

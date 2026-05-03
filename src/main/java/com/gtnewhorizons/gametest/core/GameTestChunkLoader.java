@@ -101,13 +101,8 @@ public final class GameTestChunkLoader implements ForgeChunkManager.OrderedLoadi
         }
     }
 
-    // -------------------------------------------------------------------------
-    // OrderedLoadingCallback — ticket restoration on server restart
-    // -------------------------------------------------------------------------
-
     @Override
     public void ticketsLoaded(List<Ticket> restoredTickets, World world) {
-        // Test cells are ephemeral — release any tickets that survived a crash/restart.
         for (Ticket t : restoredTickets) {
             releaseTicketSafe(t);
         }
@@ -115,7 +110,6 @@ public final class GameTestChunkLoader implements ForgeChunkManager.OrderedLoadi
 
     @Override
     public List<Ticket> ticketsLoaded(List<Ticket> restoredTickets, World world, int maxTicketCount) {
-        // Return an empty list so Forge knows we want zero tickets restored.
         return new ArrayList<>();
     }
 }

@@ -110,10 +110,6 @@ public final class InventoryHelper {
             .equals(b.getTagCompound());
     }
 
-    // -------------------------------------------------------------------------
-    // Internal
-    // -------------------------------------------------------------------------
-
     private static int mergeIntoSlot(IInventory inv, int slot, ItemStack toInsert) {
         ItemStack existing = inv.getStackInSlot(slot);
         if (existing == null) {

@@ -18,13 +18,14 @@ public enum Weather {
         this.thundering = thundering;
     }
 
+    private static final int LOCKED_DURATION_TICKS = 1_000_000_000;
+
     /** Apply this weather preset to the given world, locking it for a long duration. */
     public void applyTo(WorldServer world) {
         WorldInfo info = world.getWorldInfo();
         info.setRaining(raining);
         info.setThundering(thundering);
-        // Lock weather for ~1 billion ticks so it never changes during tests
-        info.setRainTime(raining ? 1_000_000_000 : 1_000_000_000);
-        info.setThunderTime(thundering ? 1_000_000_000 : 1_000_000_000);
+        info.setRainTime(LOCKED_DURATION_TICKS);
+        info.setThunderTime(LOCKED_DURATION_TICKS);
     }
 }

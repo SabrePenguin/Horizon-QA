@@ -94,10 +94,6 @@ public class InteractiveTestSession {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Test launching
-    // -------------------------------------------------------------------------
-
     /**
      * Launch {@code def} in a fresh grid cell.
      * Any prior cell for this test ID is left in the world; use
@@ -153,10 +149,6 @@ public class InteractiveTestSession {
                 def.getTestId(), existing.originX, existing.originY, existing.originZ);
     }
 
-    // -------------------------------------------------------------------------
-    // Cell clearing
-    // -------------------------------------------------------------------------
-
     /**
      * Fill all tracked test cells with air, release chunk tickets, and reset the grid
      * layout so future tests start at the origin again.
@@ -177,10 +169,6 @@ public class InteractiveTestSession {
         if (onClearAllCallback != null) onClearAllCallback.run();
         LOG.info("[GameTest] Cleared {} test cell(s).", cleared);
     }
-
-    // -------------------------------------------------------------------------
-    // Failure tracking
-    // -------------------------------------------------------------------------
 
     /**
      * Walk the most-recently-created instances and synchronise {@link #failedIds}:
@@ -205,10 +193,6 @@ public class InteractiveTestSession {
         return Collections.unmodifiableSet(failedIds);
     }
 
-    // -------------------------------------------------------------------------
-    // Spatial queries
-    // -------------------------------------------------------------------------
-
     /**
      * All cell records placed this session.
      * Returns a snapshot copy so the render thread can iterate safely
@@ -222,10 +206,6 @@ public class InteractiveTestSession {
     public GameTestInstance getLastInstance(String testId) {
         return lastInstances.get(testId);
     }
-
-    // -------------------------------------------------------------------------
-    // Private helpers
-    // -------------------------------------------------------------------------
 
     private GameTestInstance spawnTestAt(GameTestDefinition def, WorldServer world,
             int originX, int originY, int originZ,
@@ -249,7 +229,6 @@ public class InteractiveTestSession {
             StructurePlacer.place(template, world, originX, originY, originZ);
         }
 
-        // +16 Y headroom for visual markers that will be added in Phase 8.
         CellRecord cell = new CellRecord(def.getTestId(),
                 originX, originY, originZ,
                 originX, originY, originZ,

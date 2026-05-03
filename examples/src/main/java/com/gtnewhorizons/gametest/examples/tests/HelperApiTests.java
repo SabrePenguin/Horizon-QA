@@ -20,13 +20,7 @@ import com.gtnewhorizons.gametest.api.annotation.GameTestHolder;
 public class HelperApiTests {
 
     @BeforeBatch("")
-    public static void setup() {
-        // Batch setup runs once; determinism calls are in individual tests.
-    }
-
-    // -------------------------------------------------------------------------
-    // Block assertions
-    // -------------------------------------------------------------------------
+    public static void setup() {}
 
     @GameTest(timeoutTicks = 20)
     public static void blockPlaceAndAssert(GameTestHelper helper) {
@@ -51,15 +45,11 @@ public class HelperApiTests {
         helper.succeed();
     }
 
-    // -------------------------------------------------------------------------
-    // Inventory
-    // -------------------------------------------------------------------------
-
     @GameTest(timeoutTicks = 20)
     public static void chestInsertAndAssert(GameTestHelper helper) {
         helper.setBlock(0, 0, 0, Blocks.chest);
         helper.startSequence()
-            .thenIdle(1) // let the TE initialize
+            .thenIdle(1)
             .thenExecute(() -> {
                 helper.insertItem(0, 0, 0, new ItemStack(Items.diamond, 5));
                 helper.assertInventoryContains(0, 0, 0, new ItemStack(Items.diamond, 5));
@@ -91,10 +81,6 @@ public class HelperApiTests {
             })
             .thenSucceed();
     }
-
-    // -------------------------------------------------------------------------
-    // TileEntity NBT
-    // -------------------------------------------------------------------------
 
     @GameTest(timeoutTicks = 20)
     public static void tileEntityPresent(GameTestHelper helper) {
@@ -132,23 +118,15 @@ public class HelperApiTests {
             .thenSucceed();
     }
 
-    // -------------------------------------------------------------------------
-    // Redstone
-    // -------------------------------------------------------------------------
-
     @GameTest(timeoutTicks = 30)
     public static void redstoneInput(GameTestHelper helper) {
         helper.setBlock(0, 0, 0, Blocks.stone);
         helper.setRedstoneInput(1, 0, 0, 15);
         helper.startSequence()
-            .thenIdle(2) // allow propagation
+            .thenIdle(2)
             .thenExecute(() -> helper.assertRedstonePower(0, 0, 0, 1))
             .thenSucceed();
     }
-
-    // -------------------------------------------------------------------------
-    // Determinism
-    // -------------------------------------------------------------------------
 
     @GameTest(timeoutTicks = 20)
     public static void fixWorldTimeAndWeather(GameTestHelper helper) {
@@ -163,10 +141,6 @@ public class HelperApiTests {
         }
         helper.succeed();
     }
-
-    // -------------------------------------------------------------------------
-    // World mutation
-    // -------------------------------------------------------------------------
 
     @GameTest(timeoutTicks = 20)
     public static void setTileNbt(GameTestHelper helper) {
@@ -186,10 +160,6 @@ public class HelperApiTests {
             })
             .thenSucceed();
     }
-
-    // -------------------------------------------------------------------------
-    // Fake player
-    // -------------------------------------------------------------------------
 
     @GameTest(timeoutTicks = 20)
     public static void fakePlayerSpawn(GameTestHelper helper) {

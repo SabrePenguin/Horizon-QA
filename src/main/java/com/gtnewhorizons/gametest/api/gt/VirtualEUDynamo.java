@@ -57,9 +57,8 @@ public class VirtualEUDynamo {
             }
             TileEntity te = job.world.getTileEntity(job.absX, job.absY, job.absZ);
             if (te instanceof IGregTechTileEntity igte) {
-                // increaseStoredEnergyUnits is from IBasicEnergyContainer (via ICoverable)
-                // false = do not exceed capacity (behaves like a real supply)
-                igte.increaseStoredEnergyUnits(job.voltage * job.amperage, false);
+                boolean doNotExceedCapacity = false;
+                igte.increaseStoredEnergyUnits(job.voltage * job.amperage, doNotExceedCapacity);
             }
             job.remainingTicks--;
             if (job.remainingTicks <= 0) {
@@ -72,8 +71,6 @@ public class VirtualEUDynamo {
     public boolean hasActiveJobs() {
         return !jobs.isEmpty();
     }
-
-    // -------------------------------------------------------------------------
 
     private static final class EUSupplyJob {
 

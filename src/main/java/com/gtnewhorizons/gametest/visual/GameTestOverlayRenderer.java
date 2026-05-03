@@ -42,7 +42,6 @@ import net.minecraftforge.client.event.RenderWorldLastEvent;
  */
 public final class GameTestOverlayRenderer {
 
-    // ── Status colour palette (R, G, B) ─────────────────────────────────────────────
     private static final float[] COL_WHITE = {1f, 1f, 1f};
     private static final float[] COL_RUNNING = {0.55f, 0.55f, 0.55f}; // gray
     private static final float[] COL_PASSED  = {0.18f, 1.00f, 0.38f}; // green
@@ -76,7 +75,6 @@ public final class GameTestOverlayRenderer {
         Collection<CellRecord> cells = session.getKnownCells();
         if (cells.isEmpty() && VisualManager.getGhosts().isEmpty()) return;
 
-        // ── Set up outer state ──────────────────────────────────────────────────────
         GL11.glPushMatrix();
         GL11.glPushAttrib(
             GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT
@@ -88,10 +86,8 @@ public final class GameTestOverlayRenderer {
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        // One outer translation: world-space coordinates work naturally for all drawables.
         GL11.glTranslated(-camX, -camY, -camZ);
 
-        // ── Per-cell visuals, pass 1: boxes and beacons (write depth) ─────────────────
         for (CellRecord cell : cells) {
             GameTestInstance inst   = session.getLastInstance(cell.testId);
             GameTestStatus   status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
@@ -99,27 +95,21 @@ public final class GameTestOverlayRenderer {
 
             float[] col      = statusColor(status);
 
-            // Bounding box wireframe (depth-tested; occluded by closer geometry)
             HighlightBox.render(
                 cell.minX,       cell.minY,       cell.minZ,
                 cell.maxX + 1.0, cell.maxY + 1.0, cell.maxZ + 1.0,
                 1.0f, 1.0f, 1.0f, 0.5f);
 
-            // Beacon pillar above the cell center
-            // North-west corner: minX / minZ, beam starts just above the cell floor.
             double bcx = cell.minX - 0.5;
             double bcy = cell.minY;
             double bcz = cell.minZ - 0.5;
             DebugBeacon.render(bcx, bcy, bcz, col[0], col[1], col[2], pt, wt);
         }
 
-        // ── VisualManager ghost-block overlays ──────────────────────────────────────
         for (GhostBlockDiff ghost : VisualManager.getGhosts()) {
-            ghost.render(pt); // label (if any) is rendered at small scale inside GhostBlockDiff
+            ghost.render(pt);
         }
 
-        // ── Per-cell visuals, pass 2: floating text + failure ghosts (after beacons) ───────────
-        // Rendered after all beacons so beacon geometry never overwrites text pixels.
         for (CellRecord cell : cells) {
             GameTestInstance inst   = session.getLastInstance(cell.testId);
             GameTestStatus   status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
@@ -128,12 +118,9 @@ public final class GameTestOverlayRenderer {
             double bcx = cell.minX - 0.5;
             double bcz = cell.minZ - 0.5;
 
-            // Floating text label
             FloatingText.render(bcx, cell.minY + TEXT_Y_LIFT, bcz,
                 buildLines(cell.testId, status, inst), pt);
 
-            // Ghost block at the assertion-failure coordinate (if available).
-            // Label: full failure message (above-cell line is ellipsized summary + coords).
             if (inst.hasFailPosition()) {
                 String failLabel = null;
                 if (inst.getFailureCause() != null) {
@@ -152,8 +139,6 @@ public final class GameTestOverlayRenderer {
         GL11.glPopMatrix();
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────────
-
     private static float[] statusColor(GameTestStatus s) {
         return switch (s) {
             case PASSED -> COL_PASSED;
@@ -165,7 +150,6 @@ public final class GameTestOverlayRenderer {
 
     private static String[] buildLines(String testId, GameTestStatus status,
             GameTestInstance inst) {
-        // Short name: strip "namespace:" prefix for readability
         String name = testId.contains(":") ? testId.substring(testId.indexOf(':') + 1) : testId;
         String statusLine = statusLabel(status, inst);
 

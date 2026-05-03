@@ -85,7 +85,6 @@ public final class NBTPathAccessor {
                 return internal.get(index);
             } catch (Exception ignored) {}
         }
-        // Fallback: if the list contains compounds (the overwhelmingly common case in MC)
         NBTTagCompound compound = list.getCompoundTagAt(index);
         if (compound.hasNoTags()) return null;
         return compound;

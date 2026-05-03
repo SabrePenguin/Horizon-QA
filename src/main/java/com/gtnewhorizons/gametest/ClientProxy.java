@@ -15,7 +15,6 @@ public class ClientProxy extends CommonProxy {
         super.init(event);
         MinecraftForge.EVENT_BUS.register(new SelectionOutlineClientRenderer());
         MinecraftForge.EVENT_BUS.register(new GameTestOverlayRenderer());
-        // Wire up the clear-all callback so VisualManager is only referenced client-side.
         InteractiveTestSession.onClearAllCallback = VisualManager::clearAll;
     }
 }

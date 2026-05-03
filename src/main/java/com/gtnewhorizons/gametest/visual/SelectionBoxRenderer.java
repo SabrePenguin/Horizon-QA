@@ -19,8 +19,6 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
  */
 public class SelectionBoxRenderer {
 
-    // ---- Left-click input (Forge event bus) ----
-
     /**
      * Intercepts left-click-on-block when holding the wand: stores Pos1 and cancels the
      * block-break event so no block is damaged. Fires server-side in both creative and survival.

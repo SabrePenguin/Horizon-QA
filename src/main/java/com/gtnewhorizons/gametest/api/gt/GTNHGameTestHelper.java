@@ -56,10 +56,6 @@ public class GTNHGameTestHelper {
         this.pollutionBefore = getPollutionAtOrigin();
     }
 
-    // =========================================================================
-    // Configuration
-    // =========================================================================
-
     /**
      * Override the default 32-block fast-forward region. Increase for very large multiblocks
      * (e.g. Fusion Reactors) whose hatches extend far from the controller.
@@ -68,10 +64,6 @@ public class GTNHGameTestHelper {
         this.warpRange = blocks;
         return this;
     }
-
-    // =========================================================================
-    // Lifecycle assertions
-    // =========================================================================
 
     /**
      * Assert that the multiblock controller at {@code relPos} reports a fully formed structure
@@ -93,7 +85,6 @@ public class GTNHGameTestHelper {
             throw error("Multiblock at " + relPos
                 + " structure is not formed (mMachine=false). Verify the template is placed correctly.", relPos);
         }
-        // Skip the 100-tick startup delay: mStartUpCheck must be < 0 before onPostTick will call runMachine.
         multi.mStartUpCheck = -1;
     }
 
@@ -116,15 +107,10 @@ public class GTNHGameTestHelper {
         MTEMultiBlockBase multi = requireMultiBlock(relPos);
         for (MaintenanceType type : expected) {
             if (type.isOk(multi)) {
-                // isOk=true means maintained → NOT an issue
                 throw error("Multiblock at " + relPos + " does not have maintenance issue: " + type.name(), relPos);
             }
         }
     }
-
-    // =========================================================================
-    // Time simulation
-    // =========================================================================
 
     /**
      * Force-tick every GT tile entity in the test region for the given number of simulated ticks
@@ -159,10 +145,6 @@ public class GTNHGameTestHelper {
                 + " simulated ticks (timeout=" + timeoutTicks + ")", relPos);
         }
     }
-
-    // =========================================================================
-    // Energy (EU)
-    // =========================================================================
 
     /**
      * Register a virtual EU supply job. Starting from the next call to
@@ -204,10 +186,6 @@ public class GTNHGameTestHelper {
         }
     }
 
-    // =========================================================================
-    // Logistics
-    // =========================================================================
-
     /**
      * Fill the fluid hatch at {@code relPos} with {@code amount} mB of the named fluid.
      *
@@ -237,8 +215,6 @@ public class GTNHGameTestHelper {
         TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
         TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
 
-        // Call fill() on the IMetaTileEntity directly: IMetaTileEntity extends IFluidHandler, and
-        // going through the MTE bypasses BaseMetaTileEntity's mTickTimer > 5 guard.
         IFluidHandler handler;
         if (te instanceof IGregTechTileEntity igte) {
             handler = igte.getMetaTileEntity();
@@ -335,10 +311,6 @@ public class GTNHGameTestHelper {
         base.assertInventoryContains(relPos.x(), relPos.y(), relPos.z(), itemStack);
     }
 
-    // =========================================================================
-    // Environmental
-    // =========================================================================
-
     /**
      * Assert that at least {@code expectedPollution} units of pollution were emitted in the
      * origin chunk since this helper was created (i.e. since {@link GameTestHelper#gtnh()} was
@@ -381,10 +353,6 @@ public class GTNHGameTestHelper {
             throw error("Cannot read mEfficiency at " + relPos + ": " + e.getMessage(), relPos);
         }
     }
-
-    // =========================================================================
-    // Internal helpers
-    // =========================================================================
 
     private IGregTechTileEntity requireGTTE(TestPos relPos) {
         TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());

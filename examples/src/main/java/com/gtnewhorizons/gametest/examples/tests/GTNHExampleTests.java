@@ -49,20 +49,16 @@ public class GTNHExampleTests {
         TestPos outputBus = new TestPos(1, 0, 2);
 
 
-        // --- structure check ---
         helper.assertMachineFormed(controller);
         helper.fixAllMaintenanceIssues(controller);
 
-        // --- load inputs ---
         baseHelper.insertItem(inputBus, Materials.Nickel.getDust(1));
         baseHelper.insertItem(inputBus, Materials.Aluminium.getDust(3));
         helper.insertProgrammedCircuit(inputBus, 0);
 
-        // --- power & time-warp ---
         helper.supplyEU(energyHatch, TierEU.EV, 1, 900);
         helper.runUntilMachineIdle(controller, 1500);
 
-        // --- assert outputs ---
         helper.assertItemInBus(outputBus, Materials.NickelAluminide.getIngots(4));
 
         baseHelper.succeed();
@@ -81,8 +77,6 @@ public class GTNHExampleTests {
         TestPos controller = new TestPos(1, 0, 0);
 
         helper.assertMachineFormed(controller);
-        // Asserts the wrench maintenance flag is unset — the template was captured with that issue.
-        // Change the MaintenanceType to match the actual issue in your captured template.
         helper.assertMachineHasIssues(controller, MaintenanceType.WRENCH);
 
         baseHelper.succeed();

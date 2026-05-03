@@ -56,7 +56,6 @@ public final class GameTestRegistry {
             return;
         }
 
-        // GTNH FML stores annotation class names with dots (Type.getClassName() format)
         Set<ASMDataTable.ASMData> holderAnnotations = asmData.getAll(GameTestHolder.class.getName());
         if (holderAnnotations == null || holderAnnotations.isEmpty()) {
             LOG.info("No @GameTestHolder classes found.");
@@ -81,7 +80,7 @@ public final class GameTestRegistry {
 
     private static void processHolderClass(Class<?> clazz) {
         GameTestHolder holderAnn = clazz.getAnnotation(GameTestHolder.class);
-        if (holderAnn == null) return; // ASMData may have false positives; guard anyway
+        if (holderAnn == null) return;
 
         String namespace = holderAnn.value();
         String templatePrefix = holderAnn.templatePrefix();
@@ -170,10 +169,6 @@ public final class GameTestRegistry {
         }
         return true;
     }
-
-    // -------------------------------------------------------------------------
-    // Accessors
-    // -------------------------------------------------------------------------
 
     public static List<GameTestDefinition> getAllTests() {
         return Collections.unmodifiableList(ALL_TESTS);

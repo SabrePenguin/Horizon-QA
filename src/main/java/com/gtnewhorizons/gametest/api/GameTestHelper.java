@@ -44,20 +44,12 @@ public class GameTestHelper {
         this.originZ = originZ;
     }
 
-    // =========================================================================
-    // Coordinate utilities
-    // =========================================================================
-
     /**
      * Convert test-local block coordinates to an absolute {@link TestPos} in world space.
      */
     public TestPos absolute(int x, int y, int z) {
         return new TestPos(originX + x, originY + y, originZ + z);
     }
-
-    // =========================================================================
-    // Sequence API
-    // =========================================================================
 
     /**
      * Create and attach a new {@link GameTestSequence} to this test. Must be called at most once per
@@ -68,10 +60,6 @@ public class GameTestHelper {
         instance.setSequence(seq);
         return seq;
     }
-
-    // =========================================================================
-    // Immediate pass / fail
-    // =========================================================================
 
     /**
      * Immediately mark this test as passed. Equivalent to {@code startSequence().thenSucceed()} but
@@ -89,10 +77,6 @@ public class GameTestHelper {
         throw new GameTestAssertException(message, originX, originY, originZ);
     }
 
-    // =========================================================================
-    // World access
-    // =========================================================================
-
     public WorldServer getWorld() {
         return world;
     }
@@ -108,10 +92,6 @@ public class GameTestHelper {
     public int getOriginZ() {
         return originZ;
     }
-
-    // =========================================================================
-    // Block assertions
-    // =========================================================================
 
     /**
      * Assert that the block at test-local position {@code (x, y, z)} is {@code expected}.
@@ -164,10 +144,6 @@ public class GameTestHelper {
                 pos);
         }
     }
-
-    // =========================================================================
-    // TileEntity assertions
-    // =========================================================================
 
     /**
      * Assert that a TileEntity exists at test-local position {@code (x, y, z)}.
@@ -282,10 +258,6 @@ public class GameTestHelper {
         te.writeToNBT(nbt);
         return (NBTTagCompound) nbt.copy();
     }
-
-    // =========================================================================
-    // Inventory
-    // =========================================================================
 
     /**
      * Insert an ItemStack into the inventory at test-local position. Auto-detects
@@ -421,10 +393,6 @@ public class GameTestHelper {
         return inv;
     }
 
-    // =========================================================================
-    // Fluids
-    // =========================================================================
-
     /**
      * Insert a FluidStack into the fluid handler at test-local position.
      *
@@ -515,10 +483,6 @@ public class GameTestHelper {
         return handler;
     }
 
-    // =========================================================================
-    // World mutation
-    // =========================================================================
-
     /**
      * Place a block at test-local position. Uses flag 3 (notify + send to client).
      */
@@ -560,10 +524,6 @@ public class GameTestHelper {
         world.markBlockForUpdate(pos.x(), pos.y(), pos.z());
     }
 
-    // =========================================================================
-    // Redstone
-    // =========================================================================
-
     /**
      * Place a redstone block at the given test-local position for {@code durationTicks}, then remove it.
      * Uses a delayed sequence event on the test instance.
@@ -600,10 +560,6 @@ public class GameTestHelper {
         }
     }
 
-    // =========================================================================
-    // Determinism
-    // =========================================================================
-
     /**
      * Disable random block ticks in this world (e.g. crop growth, leaf decay) for deterministic tests.
      */
@@ -627,10 +583,6 @@ public class GameTestHelper {
     public void setWeather(Weather weather) {
         weather.applyTo(world);
     }
-
-    // =========================================================================
-    // Fake player
-    // =========================================================================
 
     /**
      * Spawn a fake player with the given profile name, positioned at the test's origin.
@@ -662,10 +614,6 @@ public class GameTestHelper {
         Block block = world.getBlock(pos.x(), pos.y(), pos.z());
         block.onBlockClicked(world, pos.x(), pos.y(), pos.z(), player);
     }
-
-    // =========================================================================
-    // GT-specific helper
-    // =========================================================================
 
     /**
      * Return the GTNH-specific helper that provides GregTech machine assertions, EU supply,

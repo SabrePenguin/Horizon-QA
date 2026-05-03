@@ -73,7 +73,6 @@ public class GameTestInstance {
             LOG.warn("TIMEOUT  {} (timed out after {} ticks)", definition.getTestId(), tickCount);
             return;
         }
-        // Process delayed actions (e.g. redstone pulses)
         Iterator<DelayedAction> it = delayedActions.iterator();
         while (it.hasNext()) {
             DelayedAction action = it.next();
@@ -107,10 +106,6 @@ public class GameTestInstance {
         delayedActions.add(new DelayedAction(tickCount + delayTicks, action));
     }
 
-    // -------------------------------------------------------------------------
-    // Outcome methods (called by GameTestHelper / GameTestSequence)
-    // -------------------------------------------------------------------------
-
     public void succeed() {
         if (status != GameTestStatus.RUNNING) return;
         status = GameTestStatus.PASSED;
@@ -138,10 +133,6 @@ public class GameTestInstance {
             LOG.error("Caused by:", cause);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Accessors
-    // -------------------------------------------------------------------------
 
     public void setSequence(GameTestSequence seq) {
         this.sequence = seq;
@@ -194,10 +185,6 @@ public class GameTestInstance {
     public int getFailZ() {
         return failZ;
     }
-
-    // -------------------------------------------------------------------------
-    // Inner types
-    // -------------------------------------------------------------------------
 
     private static final class DelayedAction {
 

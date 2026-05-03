@@ -57,17 +57,11 @@ public final class GhostBlockDiff {
 
         Tessellator tess = Tessellator.instance;
         tess.startDrawingQuads();
-        // +X
         face(tess, x1,y0,z1, x1,y1,z1, x1,y1,z0, x1,y0,z0);
-        // -X
         face(tess, x0,y0,z0, x0,y1,z0, x0,y1,z1, x0,y0,z1);
-        // +Y
         face(tess, x0,y1,z0, x0,y1,z1, x1,y1,z1, x1,y1,z0);
-        // -Y
         face(tess, x0,y0,z1, x0,y0,z0, x1,y0,z0, x1,y0,z1);
-        // +Z
         face(tess, x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1);
-        // -Z
         face(tess, x1,y0,z0, x0,y0,z0, x0,y1,z0, x1,y1,z0);
         tess.draw();
 
@@ -76,7 +70,6 @@ public final class GhostBlockDiff {
         GL11.glPolygonOffset(0f, 0f);
         GL11.glEnable(GL11.GL_CULL_FACE);
 
-        // Label above voxel: FloatingText wraps long lines (same behaviour as cell labels).
         if (label != null && !label.isEmpty()) {
             FloatingText.render(x + 0.5, y + 1.25, z + 0.5, new String[] { label }, 0.5f, partialTicks);
         }

@@ -49,7 +49,7 @@ public final class StructurePlacer {
         int sizeY = template.getSizeY();
         int sizeZ = template.getSizeZ();
 
-        // --- Pass 1: place all blocks (flag=2: notify clients, no neighbor cascade) ---
+        int notifyClientsOnly = 2;
         for (int x = 0; x < sizeX; x++) {
             for (int y = 0; y < sizeY; y++) {
                 for (int z = 0; z < sizeZ; z++) {
@@ -65,12 +65,11 @@ public final class StructurePlacer {
                             originZ + z);
                         continue;
                     }
-                    world.setBlock(originX + x, originY + y, originZ + z, block, entry.meta, 2);
+                    world.setBlock(originX + x, originY + y, originZ + z, block, entry.meta, notifyClientsOnly);
                 }
             }
         }
 
-        // --- Pass 2: inject TileEntity NBT data ---
         for (int x = 0; x < sizeX; x++) {
             for (int y = 0; y < sizeY; y++) {
                 for (int z = 0; z < sizeZ; z++) {
@@ -81,12 +80,11 @@ public final class StructurePlacer {
                     int wy = originY + y;
                     int wz = originZ + z;
 
-                    // Re-set the block to ensure the TileEntity is freshly created.
                     int idx = template.getPaletteIndex(x, y, z);
                     HybridStructureTemplate.PaletteEntry entry = palette[idx];
                     Block block = RegistryStringResolver.resolve(entry.name);
                     if (block == null) continue;
-                    world.setBlock(wx, wy, wz, block, entry.meta, 2);
+                    world.setBlock(wx, wy, wz, block, entry.meta, notifyClientsOnly);
 
                     TileEntity te = world.getTileEntity(wx, wy, wz);
                     if (te == null) {
@@ -99,7 +97,6 @@ public final class StructurePlacer {
                         continue;
                     }
 
-                    // Patch the position fields to absolute world coordinates before loading.
                     NBTTagCompound patchedNbt = (NBTTagCompound) teNbt.copy();
                     patchedNbt.setInteger("x", wx);
                     patchedNbt.setInteger("y", wy);

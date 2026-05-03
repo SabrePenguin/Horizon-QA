@@ -35,8 +35,6 @@ public class ItemGameTestWand extends Item {
     /** Singleton registered during {@code preInit}. */
     public static ItemGameTestWand INSTANCE;
 
-    // ---- NBT tag keys (also read by SelectionBoxRenderer and GameTestCommand) ----
-
     public static final String TAG_POS1_X = "pos1X";
     public static final String TAG_POS1_Y = "pos1Y";
     public static final String TAG_POS1_Z = "pos1Z";
@@ -49,13 +47,10 @@ public class ItemGameTestWand extends Item {
     public ItemGameTestWand() {
         super();
         setUnlocalizedName("gametest_wand");
-        // Texture: assets/gametest/textures/items/gametest_wand.png
         setTextureName(GameTestMod.MODID + ":gametest_wand");
         setMaxStackSize(1);
         setCreativeTab(CreativeTabs.tabTools);
     }
-
-    // ---- Right-click on block → set Pos2 ----
 
     @Override
     public boolean onItemUse(ItemStack stack, EntityPlayer player, World world, int x, int y, int z,
@@ -65,8 +60,6 @@ public class ItemGameTestWand extends Item {
         }
         return true;
     }
-
-    // ---- Public position setters called by SelectionBoxRenderer (pos1) and above (pos2) ----
 
     /**
      * Store Pos1 in the wand's NBT and send chat confirmation to the player.
@@ -112,8 +105,6 @@ public class ItemGameTestWand extends Item {
         }
     }
 
-    // ---- Client-side tooltip ----
-
     @Override
     @SideOnly(Side.CLIENT)
     @SuppressWarnings("rawtypes")
@@ -153,8 +144,6 @@ public class ItemGameTestWand extends Item {
                     + dx + "\u00d7" + dy + "\u00d7" + dz);
         }
     }
-
-    // ---- Utility ----
 
     public static NBTTagCompound getOrCreateNBT(ItemStack stack) {
         if (!stack.hasTagCompound()) {

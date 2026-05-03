@@ -77,16 +77,11 @@ public final class GameTestCommandUtils {
         return nearest;
     }
 
-    // -------------------------------------------------------------------------
-    // Ray–AABB intersection (slab method)
-    // -------------------------------------------------------------------------
-
     private static boolean rayIntersectsAABB(double ox, double oy, double oz,
             double fx, double fy, double fz, CellRecord cell) {
         double dx = fx - ox, dy = fy - oy, dz = fz - oz;
         double tmin = 0.0, tmax = 1.0;
 
-        // X slab
         if (Math.abs(dx) < 1e-9) {
             if (ox < cell.minX || ox > cell.maxX + 1.0) return false;
         } else {
@@ -98,7 +93,6 @@ public final class GameTestCommandUtils {
             if (tmin > tmax) return false;
         }
 
-        // Y slab
         if (Math.abs(dy) < 1e-9) {
             if (oy < cell.minY || oy > cell.maxY + 1.0) return false;
         } else {
@@ -110,7 +104,6 @@ public final class GameTestCommandUtils {
             if (tmin > tmax) return false;
         }
 
-        // Z slab
         if (Math.abs(dz) < 1e-9) {
             if (oz < cell.minZ || oz > cell.maxZ + 1.0) return false;
         } else {
@@ -124,10 +117,6 @@ public final class GameTestCommandUtils {
 
         return true;
     }
-
-    // -------------------------------------------------------------------------
-    // CellRecord
-    // -------------------------------------------------------------------------
 
     /**
      * Immutable description of one test cell's spatial footprint in the world.

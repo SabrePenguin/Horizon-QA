@@ -31,17 +31,12 @@ public class CommonProxy {
                 GameTestWorldType.INSTANCE.getWorldTypeID());
         }
 
-        // Register the chunk-loader callback so Forge knows how to handle persisted tickets.
         ForgeChunkManager.setForcedChunkLoadingCallback(GameTestMod.instance, GameTestMod.CHUNK_LOADER);
-
-        // Store the ASM data table so GameTestRegistry can use it during serverStarting
         GameTestRegistry.setAsmData(event.getAsmData());
 
-        // Register the GameTest Wand item
         ItemGameTestWand.INSTANCE = new ItemGameTestWand();
         GameRegistry.registerItem(ItemGameTestWand.INSTANCE, "gametest_wand");
 
-        // Wand left-click intercept (Forge bus). Outline drawing is client-side — see ClientProxy.init.
         MinecraftForge.EVENT_BUS.register(new SelectionBoxRenderer());
     }
 
@@ -50,19 +45,14 @@ public class CommonProxy {
     public void postInit(FMLPostInitializationEvent event) {}
 
     public void serverStarting(FMLServerStartingEvent event) {
-        // Reset interactive session so a dev-environment server restart starts clean.
         InteractiveTestSession.reset();
-
-        // Register the /gametest command regardless of CI mode — it is used interactively.
         event.registerServerCommand(new GameTestCommand());
 
-        // Discover tests for both interactive and CI use.
         GameTestMod.LOG.info("Discovering tests...");
         GameTestRegistry.discoverTests();
 
         if (!GameTestJvmFlags.isEnabled()) return;
 
-        // CI mode: run all discovered tests and exit with the failure count.
         if (GameTestRegistry.getAllTests()
             .isEmpty()) {
             GameTestMod.LOG.warn("No tests found. Nothing to run.");

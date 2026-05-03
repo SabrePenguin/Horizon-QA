@@ -82,7 +82,6 @@ public final class FloatingText {
 
         float s = SCALE * scaleMultiplier;
 
-        // Measure
         int maxW = 0;
         for (String l : lines) {
             int w = fr.getStringWidth(l);
@@ -91,19 +90,15 @@ public final class FloatingText {
         int totalH = lines.length * (fr.FONT_HEIGHT + 1) - 1;
 
         GL11.glPushMatrix();
-        // Translate to world-space anchor (outer matrix already has -cam applied)
         GL11.glTranslated(wx, wy, wz);
-        // Billboard: yaw then pitch
         GL11.glRotatef(-RenderManager.instance.playerViewY, 0f, 1f, 0f);
         GL11.glRotatef( RenderManager.instance.playerViewX, 1f, 0f, 0f);
-        // Scale: negative Y so text is right-side-up from the viewer's perspective
         GL11.glScalef(-s, -s, s);
 
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        // Semi-transparent dark background quad
         int bx0 = -maxW / 2 - PAD;
         int bx1 =  maxW / 2 + PAD;
         int by0 = -PAD;
@@ -122,7 +117,6 @@ public final class FloatingText {
         tess.addVertex(bx0, by0, 0.0);
         tess.draw();
 
-        // Text
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
