@@ -25,22 +25,21 @@ public final class SelectionOutlineClientRenderer {
     private static final float FACE_B = 232f / 255f;
 
     /**
-     * Mean face opacity with {@code glBlendFunc(GL_SRC_ALPHA, GL_ONE)}; lower than typical
-     * straight-alpha so stacked overlaps do not clip to white. {@link #FACE_ALPHA_PULSE} follows
-     * world time.
+     * Mean face opacity; final value uses {@link #facePulseModulation} (smoothstep of a sine
+     * ramp) so the breath eases at lows and highs instead of moving at a uniform rate.
      */
-    private static final float FACE_ALPHA_CENTER = 0.09f;
+    private static final float FACE_ALPHA_CENTER = 0.12f;
 
-    /** Peak deviation from centre for the opacity pulse (smooth sine). */
-    private static final float FACE_ALPHA_PULSE = 0.09f;
+    /** Half-range of the eased opacity swing (modulation is in roughly [-1, 1]). */
+    private static final float FACE_ALPHA_PULSE = 0.10f;
 
-    /** Ghost face pass (depth off): same pulse phase, lower alpha so depth-on pass can stack. */
-    private static final float FACE_THROUGH_ALPHA_CENTER = 0.03f;
+    /** Ghost face pass (depth off): same eased phase as depth faces. */
+    private static final float FACE_THROUGH_ALPHA_CENTER = 0.035f;
 
-    private static final float FACE_THROUGH_ALPHA_PULSE = 0.03f;
+    private static final float FACE_THROUGH_ALPHA_PULSE = 0.028f;
 
     /** Sine cycle length in world ticks for face pulse. */
-    private static final float FACE_PULSE_PERIOD_TICKS = 90f;
+    private static final float FACE_PULSE_PERIOD_TICKS = 60f;
 
     /** RGB brightness multiplier centre; {@link #FACE_COLOR_PULSE} tracks the same sine as alpha. */
     private static final float FACE_COLOR_CENTER = 1.0f;
@@ -56,12 +55,12 @@ public final class SelectionOutlineClientRenderer {
 
     /**
      * Extra expansion for face geometry only — wireframe stays at {@link #OUT}; faces render on a
-     * slightly larger shell to clear adjacent block meshes.
+     * slightly larger shell so quads are not coplanar with neighbour block faces.
      */
-    private static final double FACE_OUT_EXTRA = 0.003;
+    private static final double FACE_OUT_EXTRA = 0.0055;
 
     /** Screen-space line width for {@link GL11#GL_LINES} wireframe (driver clamp may apply). */
-    private static final float WIREFRAME_LINE_WIDTH = 1.5f;
+    private static final float WIREFRAME_LINE_WIDTH = 1.2f;
 
     /** Edges occluded by geometry: drawn first, reads as deep / behind blocks. */
     private static final float EDGE_ALPHA_THROUGH = 0.25f;
@@ -71,14 +70,14 @@ public final class SelectionOutlineClientRenderer {
     private static final float EDGE_DEEP_G = 0.74f;
     private static final float EDGE_DEEP_B = 0.78f;
 
-    private static final float EDGE_ALPHA_NEAR = 0.85f;
+    private static final float EDGE_ALPHA_NEAR = 0.45f;
 
     private static final float EDGE_WHITE_R = 1f;
     private static final float EDGE_WHITE_G = 1f;
     private static final float EDGE_WHITE_B = 1f;
 
-    private static final float POLY_OFFSET_NEAR_FACE_FACTOR = -1.25f;
-    private static final float POLY_OFFSET_NEAR_FACE_UNITS = -14f;
+    private static final float POLY_OFFSET_NEAR_FACE_FACTOR = -2.0f;
+    private static final float POLY_OFFSET_NEAR_FACE_UNITS = -24f;
     private static final float POLY_OFFSET_WIREFRAME_LINE_FACTOR = -1.5f;
     private static final float POLY_OFFSET_WIREFRAME_LINE_UNITS = -10f;
 
@@ -171,7 +170,7 @@ public final class SelectionOutlineClientRenderer {
         addTrueWireframeEdges(tess, x0, y0, z0, x1, y1, z1);
         tess.draw();
 
-        float breathe = (float) Math.sin((wtime * (Math.PI * 2.0)) / FACE_PULSE_PERIOD_TICKS);
+        float breathe = facePulseModulation(wtime, FACE_PULSE_PERIOD_TICKS);
         float alpha = clamp01(FACE_ALPHA_CENTER + FACE_ALPHA_PULSE * breathe);
         float alphaThrough = clamp01(
             FACE_THROUGH_ALPHA_CENTER + FACE_THROUGH_ALPHA_PULSE * breathe);
@@ -228,6 +227,23 @@ public final class SelectionOutlineClientRenderer {
     /** OpenGL Tessellator color alpha should stay ≥0 and sane; sine can barely exceed ±1 anyway. */
     private static float clamp01(float x) {
         return x <= 0f ? 0f : x >= 1f ? 1f : x;
+    }
+
+    /**
+     * One period of “breathing” in [-1, 1]: sine lifts to [0, 1], {@link #smoothstep01} eases so
+     * opacity lingers near min and max (ease-out into peaks / valleys), then maps back to [-1, 1].
+     */
+    private static float facePulseModulation(float wtime, float periodTicks) {
+        float phase = (float) ((wtime * (Math.PI * 2.0)) / periodTicks);
+        float t = 0.5f + 0.5f * (float) Math.sin(phase);
+        float eased = smoothstep01(t);
+        return eased * 2f - 1f;
+    }
+
+    private static float smoothstep01(float x) {
+        if (x <= 0f) return 0f;
+        if (x >= 1f) return 1f;
+        return x * x * (3f - 2f * x);
     }
 
     /**
