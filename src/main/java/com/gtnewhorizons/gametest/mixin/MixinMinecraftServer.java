@@ -12,11 +12,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import com.gtnewhorizons.gametest.GameTestJvmFlags;
 import com.gtnewhorizons.gametest.world.GameTestWorldType;
 
-/**
- * Forces void {@link GameTestWorldType} for level creation and when loading existing saves, so tests never run on
- * accidental default terrain. Vanilla stops integrated servers when the host disconnects; that path is handled in
- * {@link MixinNetHandlerPlayServer} instead of here.
- */
 @Mixin(MinecraftServer.class)
 public abstract class MixinMinecraftServer {
 

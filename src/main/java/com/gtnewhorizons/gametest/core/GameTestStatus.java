@@ -1,6 +1,5 @@
 package com.gtnewhorizons.gametest.core;
 
-/** Life-cycle states of a single test execution. */
 public enum GameTestStatus {
 
     NOT_STARTED,

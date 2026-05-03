@@ -12,10 +12,6 @@ import com.gtnewhorizons.gametest.api.annotation.BeforeBatch;
 import com.gtnewhorizons.gametest.api.annotation.GameTest;
 import com.gtnewhorizons.gametest.api.annotation.GameTestHolder;
 
-/**
- * Phase 4 example tests exercising the full GameTestHelper API surface:
- * blocks, inventory, TileEntity NBT, redstone, world mutation, determinism, and fake players.
- */
 @GameTestHolder("gametestexamples")
 public class HelperApiTests {
 
@@ -40,7 +36,7 @@ public class HelperApiTests {
 
     @GameTest(timeoutTicks = 20)
     public static void blockMetaAssert(GameTestHelper helper) {
-        helper.setBlock(0, 0, 0, Blocks.wool, 14); // red wool
+        helper.setBlock(0, 0, 0, Blocks.wool, 14);
         helper.assertBlockPresent(Blocks.wool, 14, 0, 0, 0);
         helper.succeed();
     }
@@ -131,7 +127,7 @@ public class HelperApiTests {
     @GameTest(timeoutTicks = 20)
     public static void fixWorldTimeAndWeather(GameTestHelper helper) {
         helper.disableRandomTicks();
-        helper.fixWorldTime(6000L); // noon
+        helper.fixWorldTime(6000L);
         helper.setWeather(Weather.CLEAR);
 
         long time = helper.getWorld()

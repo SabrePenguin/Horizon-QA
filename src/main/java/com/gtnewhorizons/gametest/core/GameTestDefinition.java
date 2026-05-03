@@ -2,7 +2,6 @@ package com.gtnewhorizons.gametest.core;
 
 import java.lang.reflect.Method;
 
-/** Immutable descriptor for a single {@code @GameTest} method. */
 public final class GameTestDefinition {
 
     private final String testId;

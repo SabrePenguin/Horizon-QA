@@ -13,10 +13,6 @@ import org.apache.logging.log4j.Logger;
 import com.gtnewhorizons.gametest.api.GameTestAssertException;
 import com.gtnewhorizons.gametest.api.GameTestHelper;
 
-/**
- * Runtime state of a single test execution. Transitions through
- * {@code NOT_STARTED → RUNNING → PASSED | FAILED | TIMED_OUT}.
- */
 public class GameTestInstance {
 
     private static final Logger LOG = LogManager.getLogger("GameTest");
@@ -32,7 +28,6 @@ public class GameTestInstance {
     private GameTestSequence sequence;
     private final List<DelayedAction> delayedActions = new ArrayList<>();
 
-    /** World-space coordinates of the block that triggered the failure (if applicable). */
     private int failX, failY, failZ;
     private boolean hasFailPosition;
 
@@ -43,10 +38,6 @@ public class GameTestInstance {
         this.originZ = originZ;
     }
 
-    /**
-     * Invoke the test method. If it sets up a {@link GameTestSequence}, the sequence will be ticked
-     * each server tick until the test completes or times out.
-     */
     public void start(WorldServer world) {
         status = GameTestStatus.RUNNING;
         GameTestHelper helper = new GameTestHelper(this, world, originX, originY, originZ);
@@ -61,10 +52,6 @@ public class GameTestInstance {
         }
     }
 
-    /**
-     * Called once per server tick while the instance is {@link GameTestStatus#RUNNING}. Enforces the
-     * timeout and advances the sequence.
-     */
     public void tick() {
         if (status != GameTestStatus.RUNNING) return;
         tickCount++;
@@ -98,10 +85,6 @@ public class GameTestInstance {
         }
     }
 
-    /**
-     * Schedule an action to run after {@code delayTicks} from the current tick count.
-     * Used by helpers like {@link com.gtnewhorizons.gametest.api.GameTestHelper#pulseRedstone}.
-     */
     public void scheduleDelayed(int delayTicks, Runnable action) {
         delayedActions.add(new DelayedAction(tickCount + delayTicks, action));
     }

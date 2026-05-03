@@ -4,9 +4,6 @@ import java.util.Map;
 
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
-/**
- * FML coremod entry point. Registers mixin config; transformers are added in later phases.
- */
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.SortingIndex(11)
 public class GameTestLoadingPlugin implements IFMLLoadingPlugin {

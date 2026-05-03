@@ -1,6 +1,5 @@
 package com.gtnewhorizons.gametest;
 
-/** JVM flags controlling GameTest bootstrap (see mixin + world setup code). */
 public final class GameTestJvmFlags {
 
     public static final String PROPERTY = "gtnh.gametest";

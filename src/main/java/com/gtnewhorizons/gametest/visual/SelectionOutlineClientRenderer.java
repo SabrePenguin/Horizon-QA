@@ -13,59 +13,34 @@ import com.gtnewhorizons.gametest.item.ItemGameTestWand;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
-/**
- * Axios-style selection hull: cuboid wireframe via {@link GL11#GL_LINES} with {@link GL11#GL_LINE_SMOOTH}
- * / hint (driver MSAA may still apply); dim ghost pass through blocks, then depth-tested lines.
- * Hull faces in pulsating {@code #c8d1ff}; ghost + depth face passes. Faces are not culled.
- */
 public final class SelectionOutlineClientRenderer {
 
     private static final float FACE_R = 156f / 255f;
     private static final float FACE_G = 168f / 255f;
     private static final float FACE_B = 232f / 255f;
 
-    /**
-     * Mean face opacity; final value uses {@link #facePulseModulation} (smoothstep of a sine
-     * ramp) so the breath eases at lows and highs instead of moving at a uniform rate.
-     */
     private static final float FACE_ALPHA_CENTER = 0.12f;
 
-    /** Half-range of the eased opacity swing (modulation is in roughly [-1, 1]). */
     private static final float FACE_ALPHA_PULSE = 0.10f;
 
-    /** Ghost face pass (depth off): same eased phase as depth faces. */
     private static final float FACE_THROUGH_ALPHA_CENTER = 0.035f;
 
     private static final float FACE_THROUGH_ALPHA_PULSE = 0.028f;
 
-    /** Sine cycle length in world ticks for face pulse. */
     private static final float FACE_PULSE_PERIOD_TICKS = 60f;
 
-    /** RGB brightness multiplier centre; {@link #FACE_COLOR_PULSE} tracks the same sine as alpha. */
     private static final float FACE_COLOR_CENTER = 1.0f;
 
     private static final float FACE_COLOR_PULSE = 0.0f;
 
-    /**
-     * Expansion past the voxel AABB for wireframe corners; faces add {@link #FACE_OUT_EXTRA}. Polygon
-     * offset ({@link #POLY_OFFSET_NEAR_FACE_FACTOR} / {@link #POLY_OFFSET_NEAR_FACE_UNITS}) pushes
-     * depth-tested faces in depth so they do not z-fight coplanar terrain.
-     */
     private static final double OUT = 0.0045;
 
-    /**
-     * Extra expansion for face geometry only — wireframe stays at {@link #OUT}; faces render on a
-     * slightly larger shell so quads are not coplanar with neighbour block faces.
-     */
     private static final double FACE_OUT_EXTRA = 0.0055;
 
-    /** Screen-space line width for {@link GL11#GL_LINES} wireframe (driver clamp may apply). */
     private static final float WIREFRAME_LINE_WIDTH = 1.2f;
 
-    /** Edges occluded by geometry: drawn first, reads as deep / behind blocks. */
     private static final float EDGE_ALPHA_THROUGH = 0.25f;
 
-    /** Slightly dim white so through-block edges feel recessed vs bright foreground edges. */
     private static final float EDGE_DEEP_R = 0.72f;
     private static final float EDGE_DEEP_G = 0.74f;
     private static final float EDGE_DEEP_B = 0.78f;
@@ -191,7 +166,6 @@ public final class SelectionOutlineClientRenderer {
         GL11.glPolygonOffset(0f, 0f);
     }
 
-    /** Pre-computed wireframe and face bounds for the current selection. */
     private static final class SelectionBounds {
 
         final double x0, y0, z0, x1, y1, z1;
@@ -244,15 +218,10 @@ public final class SelectionOutlineClientRenderer {
         }
     }
 
-    /** OpenGL Tessellator color alpha should stay ≥0 and sane; sine can barely exceed ±1 anyway. */
     private static float clamp01(float x) {
         return x <= 0f ? 0f : x >= 1f ? 1f : x;
     }
 
-    /**
-     * One period of “breathing” in [-1, 1]: sine lifts to [0, 1], {@link #smoothstep01} eases so
-     * opacity lingers near min and max (ease-out into peaks / valleys), then maps back to [-1, 1].
-     */
     private static float facePulseModulation(float wtime, float periodTicks) {
         float phase = (float) ((wtime * (Math.PI * 2.0)) / periodTicks);
         float t = 0.5f + 0.5f * (float) Math.sin(phase);
@@ -266,10 +235,6 @@ public final class SelectionOutlineClientRenderer {
         return x * x * (3f - 2f * x);
     }
 
-    /**
-     * Six solid quads, CCW outward (same hull as legacy textured version — used without UV / without
-     * texture bind).
-     */
     private static void addHullFacesSolid(Tessellator tess, double x0, double y0, double z0, double x1, double y1,
         double z1) {
 
@@ -281,10 +246,6 @@ public final class SelectionOutlineClientRenderer {
         quadSolid(tess, x1, y0, z0, x0, y0, z0, x0, y1, z0, x1, y1, z0);
     }
 
-    /**
-     * Twelve edges of an axis-aligned box as {@link GL11#GL_LINES} segment pairs (call inside
-     * {@link Tessellator#startDrawing(int)} with {@code GL_LINES}).
-     */
     private static void addTrueWireframeEdges(Tessellator tess, double minX, double minY, double minZ, double maxX,
         double maxY, double maxZ) {
 

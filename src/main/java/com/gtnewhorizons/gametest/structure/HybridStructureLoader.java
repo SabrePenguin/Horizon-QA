@@ -20,38 +20,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-/**
- * Loads {@link HybridStructureTemplate} instances from classpath resources.
- *
- * <p>
- * Template names follow the pattern {@code namespace:path}, which maps to:
- * <ul>
- * <li>JSON layout: {@code /assets/<namespace>/gameteststructures/<path>.json}</li>
- * <li>TileEntity NBT: {@code /assets/<namespace>/gameteststructures/<path>_tiles.nbt}
- * (optional — omitted when the structure contains no tile entities)</li>
- * </ul>
- *
- * <h3>JSON format (v1 — Layered Palette-Grid)</h3>
- *
- * <pre>
- * {
- *   "format_version": 1,
- *   "size": [sizeX, sizeY, sizeZ],
- *   "palette": {
- *     "C": {"name": "gregtech:gt.blockcasings", "meta": 11, "label": "Heat-Proof Casing"},
- *     "S": {"name": "minecraft:stone", "meta": 0}
- *   },
- *   "layers": [
- *     ["CCC", "CSC", "CCC"],
- *     ["C.C", "...", "C.C"]
- *   ]
- * }
- * </pre>
- *
- * The palette maps single-character keys to block entries. The {@code '.'} character is
- * reserved for air and must not appear in the palette. Each element of {@code layers} is
- * one Y-level (bottom to top), containing {@code sizeZ} strings of {@code sizeX} characters.
- */
 public final class HybridStructureLoader {
 
     private static final Logger LOG = LogManager.getLogger("GameTest");
@@ -59,12 +27,6 @@ public final class HybridStructureLoader {
 
     private HybridStructureLoader() {}
 
-    /**
-     * Load and return the template identified by {@code templateName}.
-     *
-     * @param templateName fully-qualified template name, e.g. {@code "gametestexamples:simple_box"}
-     * @throws IOException if the JSON resource is missing, malformed, or the NBT cannot be read
-     */
     public static HybridStructureTemplate load(String templateName) throws IOException {
         String[] parts = templateName.split(":", 2);
         if (parts.length != 2) {

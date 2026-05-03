@@ -3,7 +3,6 @@ package com.gtnewhorizons.gametest.api;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.storage.WorldInfo;
 
-/** Weather presets for deterministic test environments. */
 public enum Weather {
 
     CLEAR(false, false),
@@ -20,7 +19,6 @@ public enum Weather {
 
     private static final int LOCKED_DURATION_TICKS = 1_000_000_000;
 
-    /** Apply this weather preset to the given world, locking it for a long duration. */
     public void applyTo(WorldServer world) {
         WorldInfo info = world.getWorldInfo();
         info.setRaining(raining);

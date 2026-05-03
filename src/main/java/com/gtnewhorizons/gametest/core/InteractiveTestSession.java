@@ -21,50 +21,20 @@ import com.gtnewhorizons.gametest.structure.HybridStructureLoader;
 import com.gtnewhorizons.gametest.structure.HybridStructureTemplate;
 import com.gtnewhorizons.gametest.structure.StructurePlacer;
 
-/**
- * Singleton session state for interactive {@code /gametest} usage.
- *
- * <p>
- * Unlike {@link GameTestBatchRunner} (which runs headless CI suites and exits the server),
- * this class:
- * <ul>
- * <li>Keeps test cells visible in the world after completion so the developer can inspect
- * them.</li>
- * <li>Tracks which tests have failed across multiple re-runs, enabling
- * {@code /gametest runfailed}.</li>
- * <li>Supports launching individual tests or full suites on demand from commands.</li>
- * <li>Never exits the server.</li>
- * </ul>
- *
- * <p>
- * The session is reset at the beginning of each {@code serverStarting} event via
- * {@link #reset()}, so a dev-environment server restart always starts fresh.
- */
 public class InteractiveTestSession {
 
     private static final Logger LOG = LogManager.getLogger("GameTest");
 
     private static InteractiveTestSession CURRENT;
 
-    /**
-     * Optional callback invoked by {@link #clearAll()} to notify client-side systems
-     * (e.g. VisualManager) that all visual state should be wiped.
-     * Set from {@code ClientProxy} so the server core never directly imports client classes.
-     */
     public static Runnable onClearAllCallback;
 
     private final GameTestRunner runner;
     private final GameTestGridLayout grid;
     private boolean runnerRegistered;
 
-    /** Cell footprint for every test that has been placed this session. */
     private final Map<String, CellRecord> knownCells = new ConcurrentHashMap<>();
-    /** Most-recently-created {@link GameTestInstance} per test ID. */
     private final Map<String, GameTestInstance> lastInstances = new ConcurrentHashMap<>();
-    /**
-     * Test IDs that failed or timed-out in at least one run this session and have not
-     * subsequently passed. Refreshed lazily by {@link #refreshFailedIds()}.
-     */
     private final Set<String> failedIds = ConcurrentHashMap.newKeySet();
 
     private InteractiveTestSession() {
@@ -73,7 +43,6 @@ public class InteractiveTestSession {
         runnerRegistered = false;
     }
 
-    /** Return (creating if necessary) the current interactive session. */
     public static InteractiveTestSession get() {
         if (CURRENT == null) {
             CURRENT = new InteractiveTestSession();
@@ -81,10 +50,6 @@ public class InteractiveTestSession {
         return CURRENT;
     }
 
-    /**
-     * Tear down the current session: unregister the tick loop and discard all state.
-     * Called at the start of each {@code serverStarting} event.
-     */
     public static void reset() {
         if (CURRENT != null) {
             if (CURRENT.runnerRegistered) {
@@ -96,18 +61,10 @@ public class InteractiveTestSession {
         }
     }
 
-    /**
-     * Launch {@code def} in a fresh grid cell.
-     * Any prior cell for this test ID is left in the world; use
-     * {@link #relaunchAtCell(GameTestDefinition)} to re-run in-place.
-     */
     public void launchTest(GameTestDefinition def) {
         launchTests(Collections.singletonList(def));
     }
 
-    /**
-     * Launch every test in {@code defs}, each in its own freshly-allocated grid cell.
-     */
     public void launchTests(List<GameTestDefinition> defs) {
         if (defs.isEmpty()) return;
         WorldServer world = getOverworld();
@@ -125,11 +82,6 @@ public class InteractiveTestSession {
         LOG.info("[GameTest] Launched {} test(s) total.", defs.size());
     }
 
-    /**
-     * Re-run {@code def} in-place: clears its existing cell, re-places the template,
-     * and starts a fresh instance at the same origin.
-     * If no cell is known for this test, falls back to {@link #launchTest(GameTestDefinition)}.
-     */
     public void relaunchAtCell(GameTestDefinition def) {
         WorldServer world = getOverworld();
         if (world == null) return;
@@ -153,10 +105,6 @@ public class InteractiveTestSession {
             existing.originZ);
     }
 
-    /**
-     * Fill all tracked test cells with air, release chunk tickets, and reset the grid
-     * layout so future tests start at the origin again.
-     */
     public void clearAll() {
         WorldServer world = getOverworld();
         int cleared = 0;
@@ -174,11 +122,6 @@ public class InteractiveTestSession {
         LOG.info("[GameTest] Cleared {} test cell(s).", cleared);
     }
 
-    /**
-     * Walk the most-recently-created instances and synchronise {@link #failedIds}:
-     * test IDs that passed are removed; test IDs that failed or timed out are added.
-     * Only done instances are considered.
-     */
     public void refreshFailedIds() {
         for (Map.Entry<String, GameTestInstance> entry : lastInstances.entrySet()) {
             GameTestInstance inst = entry.getValue();
@@ -191,22 +134,15 @@ public class InteractiveTestSession {
         }
     }
 
-    /** Returns an unmodifiable snapshot of the current failed-test ID set. */
     public Set<String> getFailedIds() {
         refreshFailedIds();
         return Collections.unmodifiableSet(failedIds);
     }
 
-    /**
-     * All cell records placed this session.
-     * Returns a snapshot copy so the render thread can iterate safely
-     * while the server thread may be adding new entries.
-     */
     public Collection<CellRecord> getKnownCells() {
         return new ArrayList<>(knownCells.values());
     }
 
-    /** The most-recently-created instance for a given test ID, or {@code null}. */
     public GameTestInstance getLastInstance(String testId) {
         return lastInstances.get(testId);
     }

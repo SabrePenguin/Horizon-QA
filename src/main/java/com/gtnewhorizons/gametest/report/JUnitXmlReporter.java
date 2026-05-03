@@ -10,38 +10,12 @@ import java.util.List;
 import com.gtnewhorizons.gametest.core.GameTestInstance;
 import com.gtnewhorizons.gametest.core.GameTestStatus;
 
-/**
- * Writes a JUnit-compatible XML report ({@code TEST-gametest.xml}) consumable by CI tools
- * (Jenkins, GitHub Actions, etc.).
- *
- * <p>
- * Format:
- *
- * <pre>
- * {@code
- * <testsuite name="gametest" tests="N" failures="F" errors="E" time="T">
- *   <testcase name="methodName" classname="batch" time="T">
- *     <failure message="..." type="GameTestAssertException">stacktrace</failure>
- *   </testcase>
- * </testsuite>
- * }
- * </pre>
- *
- * <p>
- * Tick counts are converted to seconds using a 20 ticks-per-second constant.
- */
 public final class JUnitXmlReporter {
 
     private static final double TICKS_PER_SECOND = 20.0;
 
     private JUnitXmlReporter() {}
 
-    /**
-     * Write the JUnit XML report for {@code instances} to {@code outputFile}. Parent directories are
-     * created automatically if they do not exist.
-     *
-     * @throws IOException if the file cannot be written
-     */
     public static void write(List<GameTestInstance> instances, File outputFile) throws IOException {
         File parent = outputFile.getParentFile();
         if (parent != null) parent.mkdirs();
@@ -112,7 +86,6 @@ public final class JUnitXmlReporter {
         pw.println("  </testcase>");
     }
 
-    /** Total suite wall-clock time: the highest individual tick count converted to seconds. */
     private static double suiteDuration(List<GameTestInstance> instances) {
         int max = 0;
         for (GameTestInstance inst : instances) {
@@ -127,7 +100,6 @@ public final class JUnitXmlReporter {
         return sw.toString();
     }
 
-    /** Escape XML attribute values (double-quoted). */
     private static String escape(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;")
@@ -136,7 +108,6 @@ public final class JUnitXmlReporter {
             .replace("\"", "&quot;");
     }
 
-    /** Escape XML text content (CDATA-style body, no quote escaping needed). */
     private static String escapeBody(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;")

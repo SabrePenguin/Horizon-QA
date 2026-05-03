@@ -28,27 +28,6 @@ import com.gtnewhorizons.gametest.core.InteractiveTestSession;
 import com.gtnewhorizons.gametest.item.ItemGameTestWand;
 import com.gtnewhorizons.gametest.structure.StructureExporter;
 
-/**
- * The {@code /gametest} command (alias: {@code /gt}).
- *
- * <h3>Subcommands</h3>
- * <ul>
- * <li>{@code run <id>} — launch a specific test by fully-qualified test ID</li>
- * <li>{@code runall [namespace]} — launch all discovered tests, optionally filtered
- * by namespace prefix</li>
- * <li>{@code runfailed} — re-run every test that failed or timed out in a prior run
- * this session</li>
- * <li>{@code runthis} — re-run the test whose cell the player is currently standing
- * inside (in-place)</li>
- * <li>{@code runthat} — run the test the player is looking at (64-block raytrace)</li>
- * <li>{@code pos} — print coordinates relative to the nearest test cell origin,
- * formatted as {@code helper.absolute(x, y, z)} for direct paste into test code</li>
- * <li>{@code clearall} — fill all placed test cells with air and release chunk
- * tickets</li>
- * <li>{@code export <name>} — export the current wand selection to a hybrid JSON/NBT
- * template pair</li>
- * </ul>
- */
 public class GameTestCommand extends CommandBase {
 
     private static final String[] SUBCOMMANDS = { "run", "runall", "runfailed", "runthis", "runthat", "pos", "clearall",
@@ -64,7 +43,6 @@ public class GameTestCommand extends CommandBase {
         return "/gametest <run|runall|runfailed|runthis|runthat|pos|clearall|export>";
     }
 
-    /** Require operator-level permission — this is a dev/testing tool. */
     @Override
     public int getRequiredPermissionLevel() {
         return 2;
@@ -274,7 +252,6 @@ public class GameTestCommand extends CommandBase {
         relaunchCell(sender, cell);
     }
 
-    /** Look up the definition for a cell and relaunch it in-place. */
     private static void relaunchCell(ICommandSender sender, CellRecord cell) {
         GameTestDefinition def = findDefinition(cell.testId);
         if (def == null) {

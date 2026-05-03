@@ -11,9 +11,6 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 
-/**
- * Chunk provider producing all-air chunks without population or structures.
- */
 public class VoidChunkProvider implements IChunkProvider {
 
     private final World worldObj;
@@ -42,9 +39,7 @@ public class VoidChunkProvider implements IChunkProvider {
     }
 
     @Override
-    public void populate(IChunkProvider unused, int chunkX, int chunkZ) {
-        /* no lakes, caves, decorations, structures */
-    }
+    public void populate(IChunkProvider unused, int chunkX, int chunkZ) {}
 
     @Override
     public boolean saveChunks(boolean writeAllChunks, IProgressUpdate progressCallback) {
@@ -82,9 +77,7 @@ public class VoidChunkProvider implements IChunkProvider {
     }
 
     @Override
-    public void recreateStructures(int cx, int cz) {
-        /* void */
-    }
+    public void recreateStructures(int cx, int cz) {}
 
     @Override
     public boolean chunkExists(int x, int z) {

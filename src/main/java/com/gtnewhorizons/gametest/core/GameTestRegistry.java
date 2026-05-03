@@ -20,10 +20,6 @@ import com.gtnewhorizons.gametest.api.annotation.GameTestHolder;
 
 import cpw.mods.fml.common.discovery.ASMDataTable;
 
-/**
- * Discovers and stores all {@link GameTest} definitions by scanning classes annotated with
- * {@link GameTestHolder} in the FML {@link ASMDataTable}.
- */
 public final class GameTestRegistry {
 
     private static final Logger LOG = LogManager.getLogger("GameTest");
@@ -36,16 +32,10 @@ public final class GameTestRegistry {
 
     private GameTestRegistry() {}
 
-    /** Called in {@code preInit} to store the data table for later discovery. */
     public static void setAsmData(ASMDataTable data) {
         asmData = data;
     }
 
-    /**
-     * Scan the ASM data table for {@link GameTestHolder}-annotated classes, then reflectively collect
-     * all {@link GameTest}, {@link BeforeBatch}, and {@link AfterBatch} methods. Safe to call
-     * multiple times — clears previous results first.
-     */
     public static void discoverTests() {
         ALL_TESTS.clear();
         BEFORE_BATCH_METHODS.clear();
@@ -126,11 +116,10 @@ public final class GameTestRegistry {
 
     private static String resolveTemplate(String namespace, String prefix, String rawTemplate, String methodName) {
         if (rawTemplate.isEmpty()) {
-            // No template — derive from method name
             return "";
         }
         if (rawTemplate.contains(":")) {
-            return rawTemplate; // already fully-qualified
+            return rawTemplate;
         }
         String base = prefix.isEmpty() ? rawTemplate : (prefix + "/" + rawTemplate);
         return namespace + ":" + base;
@@ -174,7 +163,6 @@ public final class GameTestRegistry {
         return Collections.unmodifiableList(ALL_TESTS);
     }
 
-    /** Returns tests whose {@link GameTestDefinition#getBatch()} matches {@code batchName}. */
     public static List<GameTestDefinition> getTestsForBatch(String batchName) {
         List<GameTestDefinition> result = new ArrayList<>();
         for (GameTestDefinition def : ALL_TESTS) {
@@ -184,7 +172,6 @@ public final class GameTestRegistry {
         return result;
     }
 
-    /** Returns tests belonging to the given namespace (holder {@link GameTestHolder#value()}). */
     public static List<GameTestDefinition> getTestsForNamespace(String namespace) {
         List<GameTestDefinition> result = new ArrayList<>();
         for (GameTestDefinition def : ALL_TESTS) {

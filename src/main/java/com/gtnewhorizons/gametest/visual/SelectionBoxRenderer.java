@@ -8,21 +8,8 @@ import com.gtnewhorizons.gametest.item.ItemGameTestWand;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
-/**
- * Left-click interception for the GameTest Wand: stores Pos1 and cancels breaking the clicked
- * block while holding the wand (creative or survival).
- *
- * <p>
- * Register on the Forge {@code EVENT_BUS}. The selection box is drawn on the client by
- * {@link SelectionOutlineClientRenderer}, registered from
- * {@link com.gtnewhorizons.gametest.ClientProxy}.
- */
 public class SelectionBoxRenderer {
 
-    /**
-     * Intercepts left-click-on-block when holding the wand: stores Pos1 and cancels the
-     * block-break event so no block is damaged. Fires server-side in both creative and survival.
-     */
     @SubscribeEvent
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.action != PlayerInteractEvent.Action.LEFT_CLICK_BLOCK) return;

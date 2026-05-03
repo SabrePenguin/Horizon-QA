@@ -8,20 +8,12 @@ import org.apache.logging.log4j.Logger;
 import com.gtnewhorizons.gametest.core.GameTestInstance;
 import com.gtnewhorizons.gametest.core.GameTestStatus;
 
-/**
- * Writes a human-readable, per-test summary of all results to the server log.
- *
- * <p>
- * One line per test: {@code [PASS]}, {@code [FAIL]}, or {@code [TIME]} (timed-out). Failed tests
- * include the assertion message. A footer line shows totals.
- */
 public final class ConsoleReporter {
 
     private static final Logger LOG = LogManager.getLogger("GameTest");
 
     private ConsoleReporter() {}
 
-    /** Log a full test-run summary for {@code instances}. */
     public static void report(List<GameTestInstance> instances) {
         int passed = 0, failed = 0, timedOut = 0, other = 0;
         for (GameTestInstance inst : instances) {

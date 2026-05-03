@@ -491,7 +491,6 @@ public class GameTestHelper {
         world.setBlock(pos.x(), pos.y(), pos.z(), block, meta, 3);
     }
 
-    /** Place a block with default metadata 0. */
     public void setBlock(int x, int y, int z, Block block) {
         setBlock(x, y, z, block, 0);
     }

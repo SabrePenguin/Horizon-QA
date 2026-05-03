@@ -11,37 +11,15 @@ import net.minecraft.entity.Entity;
 
 import org.lwjgl.opengl.GL11;
 
-/**
- * Renders one or more lines of text as a billboard label at a world-space position.
- * Long lines are wrapped to roughly {@link #MAX_LINE_PIXEL_WIDTH} font pixels per line so nothing
- * is clipped at the screen edge. The text always faces the camera regardless of player orientation
- * (yaw + pitch billboard rotation). Depth testing is disabled so failure messages remain readable
- * through terrain without the player needing line-of-sight.
- * Hidden when farther than ten blocks from the view camera (eyes).
- *
- * <p>
- * Must be called while the outer GL matrix has been translated by
- * {@code (-camX, -camY, -camZ)} so that world coordinates work naturally.
- * Pass {@code partialTicks} from the current render phase (e.g.
- * {@link net.minecraftforge.client.event.RenderWorldLastEvent#partialTicks}).
- */
 public final class FloatingText {
 
-    /**
-     * Converts font-pixel space to world-block space. At 0.025f one font pixel
-     * is 1/40th of a block (matches vanilla name-tag scaling).
-     */
     private static final float SCALE = 0.025f;
-    /** Background quad padding in font pixels. */
     private static final int PAD = 2;
-    /** Beyond this Euclidean distance from the camera, labels are skipped. */
     private static final double MAX_VIEW_DISTANCE_SQ = 5.0 * 5.0;
-    /** Max width per line in font pixels; longer segments wrap to extra lines (MC format codes preserved). */
     private static final int MAX_LINE_PIXEL_WIDTH = 240;
 
     private FloatingText() {}
 
-    /** Expands caller lines by wrapping overly long segments to fit {@link #MAX_LINE_PIXEL_WIDTH}. */
     private static String[] wrapLines(FontRenderer fr, String[] lines) {
         List<String> out = new ArrayList<>(lines.length * 2);
         for (String raw : lines) {
@@ -53,14 +31,6 @@ public final class FloatingText {
         return out.toArray(new String[out.size()]);
     }
 
-    /**
-     * Draw text lines centered at the given world position.
-     *
-     * @param wx/wy/wz        world-space anchor (text is centered horizontally, top-aligned)
-     * @param lines           one or more lines; MC color codes ({@code §a}, {@code §c}, …) accepted
-     * @param scaleMultiplier multiplies the base scale (use &lt;1 for small labels, e.g. 0.5f)
-     * @param partialTicks    frame interpolation factor for camera position (see class Javadoc)
-     */
     public static void render(double wx, double wy, double wz, String[] lines, float scaleMultiplier,
         float partialTicks) {
         if (lines == null || lines.length == 0) return;
@@ -129,9 +99,6 @@ public final class FloatingText {
         GL11.glPopMatrix();
     }
 
-    /**
-     * Convenience overload at normal (1×) scale.
-     */
     public static void render(double wx, double wy, double wz, String[] lines, float partialTicks) {
         render(wx, wy, wz, lines, 1.0f, partialTicks);
     }

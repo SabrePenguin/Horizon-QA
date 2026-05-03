@@ -4,29 +4,13 @@ import net.minecraft.client.renderer.Tessellator;
 
 import org.lwjgl.opengl.GL11;
 
-/**
- * Immutable descriptor for one translucent "ghost block" overlay, used to highlight
- * assertion-failure positions (red) or expected block positions (green) without
- * physically placing any blocks in the world.
- *
- * <p>
- * Call {@link #render(float)} while the outer GL matrix is translated by
- * {@code (-camX, -camY, -camZ)} so that the stored world coordinates work directly.
- */
 public final class GhostBlockDiff {
 
-    /** World-space block coordinates of the ghost. */
     public final int x, y, z;
-    /** Normalised RGB fill color [0..1]. */
     public final float r, g, b;
-    /**
-     * Optional label (e.g. failure reason) drawn above this ghost via {@link FloatingText}
-     * at half scale; long strings wrap instead of clipping. {@code null} = no label.
-     */
     public final String label;
 
     private static final float ALPHA = 0.45f;
-    /** Inset on every axis so all six faces sit inside the voxel, away from neighboring block skins. */
     private static final double INSET = 0.0045;
 
     public GhostBlockDiff(int x, int y, int z, float r, float g, float b, String label) {
@@ -39,12 +23,6 @@ public final class GhostBlockDiff {
         this.label = label;
     }
 
-    /**
-     * Draw this ghost block into the current GL context (outer camera-offset matrix assumed).
-     *
-     * @param partialTicks same as {@link FloatingText} /
-     *                     {@link net.minecraftforge.client.event.RenderWorldLastEvent#partialTicks}
-     */
     public void render(float partialTicks) {
         double x0 = x - INSET;
         double y0 = y - INSET;

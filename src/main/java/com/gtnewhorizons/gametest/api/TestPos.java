@@ -2,7 +2,6 @@ package com.gtnewhorizons.gametest.api;
 
 import java.util.Objects;
 
-/** Immutable integer block position within a test structure / world. */
 public final class TestPos {
 
     private final int x;

@@ -19,44 +19,16 @@ import com.gtnewhorizons.gametest.visual.drawables.HighlightBox;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
-/**
- * Client-side stateless overlay renderer. Subscribes to {@link RenderWorldLastEvent} and
- * each frame renders:
- *
- * <ol>
- * <li>A bounding-box wireframe around every known test cell.</li>
- * <li>A glowing beacon pillar above each cell, color-coded by test status.</li>
- * <li>Billboarded floating text above the beacon: test name, status with tick progress while
- * running, and (for failures) an ellipsized assertion summary plus fail coordinates when known;
- * the red ghost marker keeps the full message.</li>
- * <li>A red ghost-block at the assertion-failure position when the exception carried
- * world coordinates.</li>
- * <li>Any custom {@link GhostBlockDiff} objects submitted through
- * {@link VisualManager}.</li>
- * </ol>
- *
- * <p>
- * All geometry uses world-space coordinates. One outer {@code glTranslated(-camX, …)}
- * converts them to camera-relative space; the drawables never need the camera position.
- *
- * <p>
- * Registered from {@link com.gtnewhorizons.gametest.ClientProxy#init}.
- */
 public final class GameTestOverlayRenderer {
 
     private static final float[] COL_WHITE = { 1f, 1f, 1f };
-    private static final float[] COL_RUNNING = { 0.55f, 0.55f, 0.55f }; // gray
-    private static final float[] COL_PASSED = { 0.18f, 1.00f, 0.38f }; // green
-    private static final float[] COL_FAILED = { 1.00f, 0.16f, 0.16f }; // red
-    private static final float[] COL_TIMEOUT = { 1.00f, 0.62f, 0.04f }; // orange
+    private static final float[] COL_RUNNING = { 0.55f, 0.55f, 0.55f };
+    private static final float[] COL_PASSED = { 0.18f, 1.00f, 0.38f };
+    private static final float[] COL_FAILED = { 1.00f, 0.16f, 0.16f };
+    private static final float[] COL_TIMEOUT = { 1.00f, 0.62f, 0.04f };
 
-    /**
-     * Y blocks above the cell ceiling where floating text is anchored.
-     * Gives enough clearance so the text does not overlap the beacon start.
-     */
     private static final double TEXT_Y_LIFT = 3.0;
 
-    /** Above-cell failure summary: truncated; full text stays on the ghost {@link FloatingText} at the fail block. */
     private static final int MAX_CELL_FAILURE_CHARS = 96;
 
     @SubscribeEvent

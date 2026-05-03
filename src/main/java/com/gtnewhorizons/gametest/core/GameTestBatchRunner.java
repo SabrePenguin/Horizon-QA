@@ -25,16 +25,6 @@ import com.gtnewhorizons.gametest.structure.StructurePlacer;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 
-/**
- * Orchestrates sequential batch execution: for each batch, calls {@code @BeforeBatch} methods,
- * loads and places any structure templates, runs all tests in the batch via {@link GameTestRunner},
- * then calls {@code @AfterBatch} methods.
- *
- * <p>
- * The {@link GameTestRunner} tick loop is registered once in {@link #start()} and unregistered
- * when the final batch completes. Chunk tickets for all active cells are released at that point via
- * {@link GameTestChunkLoader#releaseAll()}.
- */
 public class GameTestBatchRunner {
 
     private static final Logger LOG = LogManager.getLogger("GameTest");
@@ -51,7 +41,6 @@ public class GameTestBatchRunner {
         batches = buildBatches(tests, beforeBatchMethods, afterBatchMethods);
     }
 
-    /** Register the tick loop and begin executing the first batch. */
     public void start() {
         runner.register();
         if (batches.isEmpty()) {
@@ -144,10 +133,6 @@ public class GameTestBatchRunner {
         }
     }
 
-    /**
-     * Load template, allocate a grid cell, force-load chunks, place the structure, and start
-     * the test. Returns the running instance.
-     */
     private GameTestInstance allocateAndSpawn(GameTestDefinition def, WorldServer world) {
         HybridStructureTemplate template = loadTemplate(def);
 

@@ -5,10 +5,8 @@ import net.minecraft.world.WorldType;
 import net.minecraft.world.biome.WorldChunkManager;
 import net.minecraft.world.chunk.IChunkProvider;
 
-/** Empty void overworld terrain for deterministic GameTests. Registered via Forge {@link WorldType} constructor. */
 public class GameTestWorldType extends WorldType {
 
-    /** Short name matched by {@link WorldType#parseWorldType}; must be &le; 16 characters (vanilla constraint). */
     public static final String TYPE_NAME = "gtnhvvoid";
 
     public static final GameTestWorldType INSTANCE = new GameTestWorldType();

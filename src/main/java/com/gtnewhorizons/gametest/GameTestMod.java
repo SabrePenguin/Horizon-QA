@@ -22,7 +22,6 @@ public class GameTestMod {
     @Mod.Instance(GameTestMod.MODID)
     public static GameTestMod instance;
 
-    /** Shared chunk-loader; registered as the ForgeChunkManager callback in preInit. */
     public static final GameTestChunkLoader CHUNK_LOADER = new GameTestChunkLoader();
 
     @SidedProxy(

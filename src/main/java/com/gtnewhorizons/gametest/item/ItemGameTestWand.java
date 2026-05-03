@@ -16,23 +16,8 @@ import com.gtnewhorizons.gametest.GameTestMod;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
-/**
- * The GameTest Wand — a creative-mode selection tool for marking the two corners of a structure
- * region to export.
- *
- * <ul>
- * <li><b>Left-click</b> a block → set Pos1 (intercepted via
- * {@link com.gtnewhorizons.gametest.visual.SelectionBoxRenderer})</li>
- * <li><b>Right-click</b> a block → set Pos2</li>
- * </ul>
- *
- * Both positions are stored in the item's NBT compound so the selection persists across inventory
- * transfers. Use {@code /gametest export <name>} after selecting a region to write the hybrid
- * JSON/NBT template files.
- */
 public class ItemGameTestWand extends Item {
 
-    /** Singleton registered during {@code preInit}. */
     public static ItemGameTestWand INSTANCE;
 
     public static final String TAG_POS1_X = "pos1X";
@@ -61,10 +46,6 @@ public class ItemGameTestWand extends Item {
         return true;
     }
 
-    /**
-     * Store Pos1 in the wand's NBT and send chat confirmation to the player.
-     * Called from {@link com.gtnewhorizons.gametest.visual.SelectionBoxRenderer#onPlayerInteract}.
-     */
     public static void setPos1(ItemStack stack, EntityPlayer player, int x, int y, int z) {
         NBTTagCompound nbt = getOrCreateNBT(stack);
         nbt.setInteger(TAG_POS1_X, x);
@@ -85,7 +66,6 @@ public class ItemGameTestWand extends Item {
         printDimensions(player, nbt);
     }
 
-    /** Store Pos2 in the wand's NBT and send chat confirmation to the player. */
     public static void setPos2(ItemStack stack, EntityPlayer player, int x, int y, int z) {
         NBTTagCompound nbt = getOrCreateNBT(stack);
         nbt.setInteger(TAG_POS2_X, x);

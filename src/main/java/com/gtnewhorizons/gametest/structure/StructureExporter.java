@@ -20,24 +20,6 @@ import net.minecraft.world.WorldServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-/**
- * Exports a live world region as a hybrid structure template: a human-readable, Git-diffable JSON
- * file for the block layout, and a companion compressed-NBT file for TileEntity payloads.
- *
- * <p>
- * This is the backend invoked by the {@code /gametest export} command and by the GameTest Wand
- * item. Output files are written to the caller-supplied directory:
- * <ul>
- * <li>{@code <outputDir>/<name>.json} — layered palette-grid block layout</li>
- * <li>{@code <outputDir>/<name>_tiles.nbt} — TileEntity data (always written, may be empty)</li>
- * </ul>
- *
- * <h3>Output format (v1 — Layered Palette-Grid)</h3>
- * The JSON uses single-character palette keys mapped to (registry name, metadata) pairs. The
- * 3D block layout is represented as Y-level layers, each layer being an array of Z-row strings
- * where each character is a palette key. {@code '.'} is reserved for air. Palette entries are
- * sorted by registry name then metadata for deterministic, diff-stable output across re-exports.
- */
 public final class StructureExporter {
 
     private static final int VERSION_NUMBER = 1;
@@ -48,21 +30,6 @@ public final class StructureExporter {
 
     private StructureExporter() {}
 
-    /**
-     * Capture the region from {@code (x1, y1, z1)} to {@code (x2, y2, z2)} inclusive and write the
-     * two output files.
-     *
-     * @param world     the server world to read from
-     * @param x1        min world X (inclusive)
-     * @param y1        min world Y (inclusive)
-     * @param z1        min world Z (inclusive)
-     * @param x2        max world X (inclusive)
-     * @param y2        max world Y (inclusive)
-     * @param z2        max world Z (inclusive)
-     * @param outputDir directory where files will be written (created if absent)
-     * @param name      base file name, no extension (e.g. {@code "blast_furnace_2x2"})
-     * @throws IOException if either output file cannot be written
-     */
     public static void export(WorldServer world, int x1, int y1, int z1, int x2, int y2, int z2, File outputDir,
         String name) throws IOException {
 
@@ -215,10 +182,6 @@ public final class StructureExporter {
         LOG.info("StructureExporter: wrote tile data → {}", nbtFile.getAbsolutePath());
     }
 
-    /**
-     * Attempt to derive a human-readable label for a block+meta combination via its ItemStack
-     * display name. Returns {@code null} if no meaningful name is available.
-     */
     private static String resolveLabel(Block block, int meta) {
         try {
             ItemStack stack = new ItemStack(block, 1, meta);

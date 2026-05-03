@@ -5,21 +5,12 @@ import java.util.Collection;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.Vec3;
 
-/**
- * Spatial utilities for the {@code /gametest} command: locating test cells by
- * player position or look direction.
- */
 public final class GameTestCommandUtils {
 
-    /** Length of the look-direction ray used by {@link #findTestAlongLook}. */
     private static final double RAY_LENGTH = 64.0;
 
     private GameTestCommandUtils() {}
 
-    /**
-     * Returns the first {@link CellRecord} whose AABB contains the given world-space
-     * block coordinates, or {@code null} if none match.
-     */
     public static CellRecord findTestContaining(int x, int y, int z, Collection<CellRecord> cells) {
         for (CellRecord cell : cells) {
             if (x >= cell.minX && x <= cell.maxX
@@ -33,11 +24,6 @@ public final class GameTestCommandUtils {
         return null;
     }
 
-    /**
-     * Casts a ray of length {@value #RAY_LENGTH} from the player's eye position along
-     * their look direction and returns the first {@link CellRecord} whose AABB intersects
-     * the ray, or {@code null} if none do.
-     */
     public static CellRecord findTestAlongLook(EntityPlayer player, Collection<CellRecord> cells) {
         double ox = player.posX;
         double oy = player.posY + player.eyeHeight;
@@ -55,10 +41,6 @@ public final class GameTestCommandUtils {
         return null;
     }
 
-    /**
-     * Returns the {@link CellRecord} nearest (by cell-center distance) to the given
-     * position, or {@code null} if {@code cells} is empty.
-     */
     public static CellRecord findNearestTest(int x, int y, int z, Collection<CellRecord> cells) {
         CellRecord nearest = null;
         double nearestDistSq = Double.MAX_VALUE;
@@ -129,24 +111,12 @@ public final class GameTestCommandUtils {
         return true;
     }
 
-    /**
-     * Immutable description of one test cell's spatial footprint in the world.
-     */
     public static final class CellRecord {
 
-        /**
-         * Test ID — matches
-         * {@link com.gtnewhorizons.gametest.core.GameTestDefinition#getTestId()}.
-         */
         public final String testId;
 
-        /**
-         * World-space origin passed to
-         * {@link com.gtnewhorizons.gametest.api.GameTestHelper#absolute}.
-         */
         public final int originX, originY, originZ;
 
-        /** Inclusive world-space AABB of this cell (block coordinates). */
         public final int minX, minY, minZ, maxX, maxY, maxZ;
 
         public CellRecord(String testId, int originX, int originY, int originZ, int minX, int minY, int minZ, int maxX,

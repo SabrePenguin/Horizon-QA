@@ -8,39 +8,14 @@ import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
 
-/**
- * Faithful port of {@code TileEntityBeaconRenderer} with support for arbitrary RGB tinting.
- *
- * <p>
- * Renders in two passes that match vanilla exactly:
- * <ol>
- * <li><b>Outer rotating beam</b> — blending disabled, depth write on, alpha-tested.
- * Four quads whose corners slowly rotate around the beam axis.</li>
- * <li><b>Inner square beam</b> — normal alpha blending, depth write off.
- * A fixed 0.6×0.6-block square column on top of the outer pass.</li>
- * </ol>
- *
- * <p>
- * The beam is centered at {@code (wx, wy, wz)} in world space. The caller must have
- * set up an outer GL matrix that translates by {@code (-camX, -camY, -camZ)}.
- */
 public final class DebugBeacon {
 
     private static final ResourceLocation BEAM_TEX = new ResourceLocation("textures/entity/beacon_beam.png");
 
-    /** How many blocks above its base the beam extends. */
     private static final float HEIGHT = 200.0f;
 
     private DebugBeacon() {}
 
-    /**
-     * Draw a colored beacon beam.
-     *
-     * @param wx/wy/wz     world-space beam center / base
-     * @param r/g/b        RGB tint [0..1]; replaces vanilla white (255,255,255)
-     * @param partialTicks fractional tick for smooth animation
-     * @param worldTime    total world time in ticks
-     */
     public static void render(double wx, double wy, double wz, float r, float g, float b, float partialTicks,
         long worldTime) {
 
@@ -50,8 +25,8 @@ public final class DebugBeacon {
 
         GL11.glEnable(GL11.GL_TEXTURE_2D);
 
-        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, 10497.0F); // GL_REPEAT
-        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, 10497.0F);
+        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+        GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
         GL11.glDisable(GL11.GL_LIGHTING);
         GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glEnable(GL11.GL_ALPHA_TEST);
@@ -86,7 +61,7 @@ public final class DebugBeacon {
 
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glDepthMask(true);
-        OpenGlHelper.glBlendFunc(770, 1, 1, 0); // prep blend mode for pass 2
+        OpenGlHelper.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO);
 
         tess.startDrawingQuads();
         tess.setColorRGBA(ri, gi, bi, 32);
@@ -109,7 +84,7 @@ public final class DebugBeacon {
         tess.draw();
 
         GL11.glEnable(GL11.GL_BLEND);
-        OpenGlHelper.glBlendFunc(770, 771, 1, 0); // SRC_ALPHA, ONE_MINUS_SRC_ALPHA
+        OpenGlHelper.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         GL11.glDepthMask(false);
 
         double ix0 = wx - 0.3D;

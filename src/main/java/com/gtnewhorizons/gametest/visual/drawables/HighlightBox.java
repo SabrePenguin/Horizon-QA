@@ -6,30 +6,12 @@ import net.minecraft.entity.Entity;
 
 import org.lwjgl.opengl.GL11;
 
-/**
- * Renders an axis-aligned wireframe box using {@link GL11#GL_LINES}.
- *
- * <p>
- * Depth testing is enabled with {@link GL11#GL_LEQUAL} against the scene depth buffer
- * (lines do not write depth), so outlines are occluded by solid blocks ahead of them.
- *
- * <p>
- * All vertex coordinates are world-space. The caller is responsible for setting
- * up an outer GL matrix that offsets by the negative camera position before calling
- * this method.
- */
 public final class HighlightBox {
 
-    /** Screen-space line width, driver-clamped. */
     private static final float LINE_WIDTH = 1.4f;
 
     private HighlightBox() {}
 
-    /**
-     * Draw a wireframe box from {@code (minX, minY, minZ)} to {@code (maxX, maxY, maxZ)}.
-     * The coordinates are the outer block faces (i.e. {@code minX} is already the left
-     * face of the leftmost block, {@code maxX + 1} is the right face of the rightmost).
-     */
     public static void render(double minX, double minY, double minZ, double maxX, double maxY, double maxZ, float r,
         float g, float b, float alpha) {
 

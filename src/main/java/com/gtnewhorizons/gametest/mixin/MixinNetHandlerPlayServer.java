@@ -10,7 +10,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import com.gtnewhorizons.gametest.GameTestJvmFlags;
 import com.gtnewhorizons.gametest.GameTestMod;
 
-/** Keeps integrated / single-owner servers alive after the owning player disconnects while GameTest mode is enabled. */
 @Mixin(NetHandlerPlayServer.class)
 public abstract class MixinNetHandlerPlayServer {
 
