@@ -1,6 +1,8 @@
 package com.gtnewhorizons.gametest.visual.drawables;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.entity.Entity;
 
 import org.lwjgl.opengl.GL11;
 
@@ -29,6 +31,16 @@ public final class HighlightBox {
     public static void render(double minX, double minY, double minZ,
             double maxX, double maxY, double maxZ,
             float r, float g, float b, float alpha) {
+
+        Minecraft mc = Minecraft.getMinecraft();
+        Entity view = mc.renderViewEntity != null ? mc.renderViewEntity : mc.thePlayer;
+        if (view == null) return;
+        double vx = view.posX, vy = view.posY, vz = view.posZ;
+        double nearX = vx < minX ? minX : vx > maxX ? maxX : vx;
+        double nearY = vy < minY ? minY : vy > maxY ? maxY : vy;
+        double nearZ = vz < minZ ? minZ : vz > maxZ ? maxZ : vz;
+        double dx = vx - nearX, dy = vy - nearY, dz = vz - nearZ;
+        if (dx * dx + dy * dy + dz * dz > 32.0 * 32.0) return;
 
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_TEXTURE_2D);
