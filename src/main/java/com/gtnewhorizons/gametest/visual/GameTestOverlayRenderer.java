@@ -84,7 +84,7 @@ public final class GameTestOverlayRenderer {
         // One outer translation: world-space coordinates work naturally for all drawables.
         GL11.glTranslated(-camX, -camY, -camZ);
 
-        // ── Per-cell visuals ────────────────────────────────────────────────────────
+        // ── Per-cell visuals, pass 1: boxes and beacons (write depth) ─────────────────
         for (CellRecord cell : session.getKnownCells()) {
             GameTestInstance inst   = session.getLastInstance(cell.testId);
             GameTestStatus   status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
@@ -105,10 +105,26 @@ public final class GameTestOverlayRenderer {
             double bcy = cell.minY;
             double bcz = cell.minZ - 0.5;
             DebugBeacon.render(bcx, bcy, bcz, col[0], col[1], col[2], pt, wt);
+        }
+
+        // ── VisualManager ghost-block overlays ──────────────────────────────────────
+        for (GhostBlockDiff ghost : VisualManager.getGhosts()) {
+            ghost.render(pt); // label (if any) is rendered at small scale inside GhostBlockDiff
+        }
+
+        // ── Per-cell visuals, pass 2: floating text and ghost blocks (depth-off, always on top) ──
+        // Rendered after all beacons so beacon geometry never overwrites text pixels.
+        for (CellRecord cell : session.getKnownCells()) {
+            GameTestInstance inst   = session.getLastInstance(cell.testId);
+            GameTestStatus   status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
+            if (status == GameTestStatus.NOT_STARTED) continue;
+
+            double bcx = cell.minX - 0.5;
+            double bcz = cell.minZ - 0.5;
 
             // Floating text label
             FloatingText.render(bcx, cell.minY + TEXT_Y_LIFT, bcz,
-                buildLines(cell.testId, status, inst));
+                buildLines(cell.testId, status, inst), pt);
 
             // Ghost block at the assertion-failure coordinate (if available).
             // Label (small text) shows the truncated failure message at the exact fail spot.
@@ -122,13 +138,8 @@ public final class GameTestOverlayRenderer {
                 }
                 new GhostBlockDiff(
                     inst.getFailX(), inst.getFailY(), inst.getFailZ(),
-                    1.0f, 0.12f, 0.12f, failLabel).render();
+                    1.0f, 0.12f, 0.12f, failLabel).render(pt);
             }
-        }
-
-        // ── VisualManager ghost-block overlays ──────────────────────────────────────
-        for (GhostBlockDiff ghost : VisualManager.getGhosts()) {
-            ghost.render(); // label (if any) is rendered at small scale inside GhostBlockDiff
         }
 
         GL11.glPopAttrib();

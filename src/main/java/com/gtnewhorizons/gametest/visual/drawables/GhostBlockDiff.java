@@ -9,7 +9,7 @@ import org.lwjgl.opengl.GL11;
  * assertion-failure positions (red) or expected block positions (green) without
  * physically placing any blocks in the world.
  *
- * <p>Call {@link #render()} while the outer GL matrix is translated by
+ * <p>Call {@link #render(float)} while the outer GL matrix is translated by
  * {@code (-camX, -camY, -camZ)} so that the stored world coordinates work directly.
  */
 public final class GhostBlockDiff {
@@ -36,8 +36,10 @@ public final class GhostBlockDiff {
 
     /**
      * Draw this ghost block into the current GL context (outer camera-offset matrix assumed).
+     *
+     * @param partialTicks same as {@link FloatingText} / {@link net.minecraftforge.client.event.RenderWorldLastEvent#partialTicks}
      */
-    public void render() {
+    public void render(float partialTicks) {
         double x0 = x - INSET;
         double y0 = y - INSET;
         double z0 = z - INSET;
@@ -76,7 +78,7 @@ public final class GhostBlockDiff {
 
         // Small floating label directly above this ghost block.
         if (label != null) {
-            FloatingText.render(x + 0.5, y + 1.5, z + 0.5, new String[] { label }, 0.5f);
+            FloatingText.render(x + 0.5, y + 1.5, z + 0.5, new String[] { label }, 0.5f, partialTicks);
         }
     }
 

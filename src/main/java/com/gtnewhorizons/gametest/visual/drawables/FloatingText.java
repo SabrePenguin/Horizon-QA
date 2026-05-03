@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.entity.Entity;
 
 import org.lwjgl.opengl.GL11;
 
@@ -12,9 +13,12 @@ import org.lwjgl.opengl.GL11;
  * The text always faces the camera regardless of player orientation (yaw + pitch
  * billboard rotation). Depth testing is disabled so failure messages remain readable
  * through terrain without the player needing line-of-sight.
+ * Hidden when farther than ten blocks from the view camera (eyes).
  *
  * <p>Must be called while the outer GL matrix has been translated by
  * {@code (-camX, -camY, -camZ)} so that world coordinates work naturally.
+ * Pass {@code partialTicks} from the current render phase (e.g.
+ * {@link net.minecraftforge.client.event.RenderWorldLastEvent#partialTicks}).
  */
 public final class FloatingText {
 
@@ -25,6 +29,8 @@ public final class FloatingText {
     private static final float SCALE = 0.025f;
     /** Background quad padding in font pixels. */
     private static final int   PAD   = 2;
+    /** Beyond this Euclidean distance from the camera, labels are skipped. */
+    private static final double MAX_VIEW_DISTANCE_SQ = 20.0 * 20.0;
 
     private FloatingText() {}
 
@@ -34,10 +40,23 @@ public final class FloatingText {
      * @param wx/wy/wz       world-space anchor (text is centered horizontally, top-aligned)
      * @param lines          one or more lines; MC color codes ({@code §a}, {@code §c}, …) accepted
      * @param scaleMultiplier multiplies the base scale (use &lt;1 for small labels, e.g. 0.5f)
+     * @param partialTicks   frame interpolation factor for camera position (see class Javadoc)
      */
-    public static void render(double wx, double wy, double wz, String[] lines, float scaleMultiplier) {
+    public static void render(double wx, double wy, double wz, String[] lines,
+            float scaleMultiplier, float partialTicks) {
         if (lines == null || lines.length == 0) return;
-        FontRenderer fr = Minecraft.getMinecraft().fontRenderer;
+        Minecraft mc = Minecraft.getMinecraft();
+        Entity view = mc.renderViewEntity != null ? mc.renderViewEntity : mc.thePlayer;
+        if (view == null) return;
+        double camX = view.lastTickPosX + (view.posX - view.lastTickPosX) * partialTicks;
+        double camY = view.lastTickPosY + (view.posY - view.lastTickPosY) * partialTicks;
+        double camZ = view.lastTickPosZ + (view.posZ - view.lastTickPosZ) * partialTicks;
+        double dx = wx - camX;
+        double dy = wy - camY;
+        double dz = wz - camZ;
+        if (dx * dx + dy * dy + dz * dz > MAX_VIEW_DISTANCE_SQ) return;
+
+        FontRenderer fr = mc.fontRenderer;
         if (fr == null) return;
 
         float s = SCALE * scaleMultiplier;
@@ -97,7 +116,7 @@ public final class FloatingText {
     /**
      * Convenience overload at normal (1×) scale.
      */
-    public static void render(double wx, double wy, double wz, String[] lines) {
-        render(wx, wy, wz, lines, 1.0f);
+    public static void render(double wx, double wy, double wz, String[] lines, float partialTicks) {
+        render(wx, wy, wz, lines, 1.0f, partialTicks);
     }
 }
