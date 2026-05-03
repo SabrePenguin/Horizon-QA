@@ -79,18 +79,7 @@ public final class HybridStructureLoader {
             for (Map.Entry<String, JsonElement> entry : paletteObj.entrySet()) {
                 String keyStr = entry.getKey();
                 if (keyStr.isEmpty()) continue;
-                char key = keyStr.charAt(0);
-
-                if (key == HybridStructureTemplate.AIR_KEY) {
-                    throw new IOException(
-                        "Template '" + templateName
-                            + "' palette must not use reserved air key '"
-                            + HybridStructureTemplate.AIR_KEY
-                            + "'");
-                }
-                if (keyToIndex.containsKey(key)) {
-                    throw new IOException("Template '" + templateName + "' has duplicate palette key '" + key + "'");
-                }
+                char key = getKey(templateName, keyStr, keyToIndex);
 
                 JsonObject val = entry.getValue()
                     .getAsJsonObject();
@@ -207,5 +196,22 @@ public final class HybridStructureLoader {
             sizeZ,
             palette.length - 1);
         return new HybridStructureTemplate(sizeX, sizeY, sizeZ, palette, paletteKeys, blockData, tileData);
+    }
+
+    private static char getKey(String templateName, String keyStr, Map<Character, Integer> keyToIndex)
+        throws IOException {
+        char key = keyStr.charAt(0);
+
+        if (key == HybridStructureTemplate.AIR_KEY) {
+            throw new IOException(
+                "Template '" + templateName
+                    + "' palette must not use reserved air key '"
+                    + HybridStructureTemplate.AIR_KEY
+                    + "'");
+        }
+        if (keyToIndex.containsKey(key)) {
+            throw new IOException("Template '" + templateName + "' has duplicate palette key '" + key + "'");
+        }
+        return key;
     }
 }
