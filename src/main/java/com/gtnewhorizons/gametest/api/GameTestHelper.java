@@ -16,6 +16,9 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.IFluidHandler;
 
+import cpw.mods.fml.common.Loader;
+
+import com.gtnewhorizons.gametest.api.gt.GTNHGameTestHelper;
 import com.gtnewhorizons.gametest.core.GameTestInstance;
 import com.gtnewhorizons.gametest.core.GameTestSequence;
 import com.mojang.authlib.GameProfile;
@@ -31,6 +34,7 @@ public class GameTestHelper {
     private final int originX;
     private final int originY;
     private final int originZ;
+    private GTNHGameTestHelper gtnh;
 
     public GameTestHelper(GameTestInstance instance, WorldServer world, int originX, int originY, int originZ) {
         this.instance = instance;
@@ -301,10 +305,10 @@ public class GameTestHelper {
     }
 
     /**
-     * Insert an ItemStack into the inventory at a TestPos.
+     * Insert an ItemStack into the inventory at a test-local (relative) TestPos.
      */
     public void insertItem(TestPos pos, ItemStack stack) {
-        insertItem(pos.x() - originX, pos.y() - originY, pos.z() - originZ, stack);
+        insertItem(pos.x(), pos.y(), pos.z(), stack);
     }
 
     /**
@@ -329,10 +333,10 @@ public class GameTestHelper {
     }
 
     /**
-     * Assert that the inventory at test-local position contains at least the given stack.
+     * Assert that the inventory at test-local (relative) TestPos contains at least the given stack.
      */
     public void assertInventoryContains(TestPos pos, ItemStack expected) {
-        assertInventoryContains(pos.x() - originX, pos.y() - originY, pos.z() - originZ, expected);
+        assertInventoryContains(pos.x(), pos.y(), pos.z(), expected);
     }
 
     /**
@@ -657,5 +661,27 @@ public class GameTestHelper {
         TestPos pos = absolute(x, y, z);
         Block block = world.getBlock(pos.x(), pos.y(), pos.z());
         block.onBlockClicked(world, pos.x(), pos.y(), pos.z(), player);
+    }
+
+    // =========================================================================
+    // GT-specific helper
+    // =========================================================================
+
+    /**
+     * Return the GTNH-specific helper that provides GregTech machine assertions, EU supply,
+     * time-warp, and fluid-hatch utilities. The helper is created lazily on first call and
+     * reused on subsequent calls within the same test instance.
+     *
+     * @throws IllegalStateException if GT5-Unofficial (mod ID {@code gregtech}) is not loaded
+     */
+    public GTNHGameTestHelper gtnh() {
+        if (gtnh == null) {
+            if (!Loader.isModLoaded("gregtech")) {
+                throw new IllegalStateException(
+                    "GT5-Unofficial (mod ID 'gregtech') is not loaded. Cannot use GTNHGameTestHelper.");
+            }
+            gtnh = new GTNHGameTestHelper(this, world, originX, originY, originZ);
+        }
+        return gtnh;
     }
 }
