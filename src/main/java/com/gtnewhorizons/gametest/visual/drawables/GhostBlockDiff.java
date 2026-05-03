@@ -25,8 +25,8 @@ public final class GhostBlockDiff {
     public final String label;
 
     private static final float ALPHA = 0.45f;
-    /** Inset from block faces to avoid z-fighting with actual blocks. */
-    private static final double INSET = 0.01;
+    /** Inset on every axis so all six faces sit inside the voxel, away from neighboring block skins. */
+    private static final double INSET = 0.0045;
 
     public GhostBlockDiff(int x, int y, int z, float r, float g, float b, String label) {
         this.x = x; this.y = y; this.z = z;
@@ -38,12 +38,12 @@ public final class GhostBlockDiff {
      * Draw this ghost block into the current GL context (outer camera-offset matrix assumed).
      */
     public void render() {
-        double x0 = x + INSET;
-        double y0 = y + INSET;
-        double z0 = z + INSET;
-        double x1 = x + 1.0 - INSET;
-        double y1 = y + 1.0 - INSET;
-        double z1 = z + 1.0 - INSET;
+        double x0 = x - INSET;
+        double y0 = y - INSET;
+        double z0 = z - INSET;
+        double x1 = x + 1.0 + INSET;
+        double y1 = y + 1.0 + INSET;
+        double z1 = z + 1.0 + INSET;
 
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
