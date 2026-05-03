@@ -2,37 +2,58 @@ package com.gtnewhorizons.gametest.command;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.event.ClickEvent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.WorldServer;
 
 import com.gtnewhorizons.gametest.GameTestMod;
+import com.gtnewhorizons.gametest.command.GameTestCommandUtils.CellRecord;
+import com.gtnewhorizons.gametest.core.GameTestDefinition;
+import com.gtnewhorizons.gametest.core.GameTestRegistry;
+import com.gtnewhorizons.gametest.core.InteractiveTestSession;
 import com.gtnewhorizons.gametest.item.ItemGameTestWand;
 import com.gtnewhorizons.gametest.structure.StructureExporter;
 
 /**
  * The {@code /gametest} command (alias: {@code /gt}).
  *
- * <h3>Phase 6 subcommands</h3>
+ * <h3>Subcommands</h3>
  * <ul>
- * <li>{@code /gametest export <name>} — exports the current wand selection to a hybrid
- * JSON/NBT template pair in the {@code gameteststructures/} directory.</li>
+ *   <li>{@code run <id>} — launch a specific test by fully-qualified test ID</li>
+ *   <li>{@code runall [namespace]} — launch all discovered tests, optionally filtered
+ *       by namespace prefix</li>
+ *   <li>{@code runfailed} — re-run every test that failed or timed out in a prior run
+ *       this session</li>
+ *   <li>{@code runthis} — re-run the test whose cell the player is currently standing
+ *       inside (in-place)</li>
+ *   <li>{@code runthat} — run the test the player is looking at (64-block raytrace)</li>
+ *   <li>{@code pos} — print coordinates relative to the nearest test cell origin,
+ *       formatted as {@code helper.absolute(x, y, z)} for direct paste into test code</li>
+ *   <li>{@code clearall} — fill all placed test cells with air and release chunk
+ *       tickets</li>
+ *   <li>{@code export <name>} — export the current wand selection to a hybrid JSON/NBT
+ *       template pair</li>
  * </ul>
- *
- * <p>
- * Phase 7 will add: {@code run}, {@code runall}, {@code runfailed}, {@code pos},
- * {@code clearall}, {@code runthis}, {@code runthat}.
  */
 public class GameTestCommand extends CommandBase {
+
+    private static final String[] SUBCOMMANDS = {
+        "run", "runall", "runfailed", "runthis", "runthat", "pos", "clearall", "export"
+    };
 
     @Override
     public String getCommandName() {
@@ -41,7 +62,7 @@ public class GameTestCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/gametest export <name>";
+        return "/gametest <run|runall|runfailed|runthis|runthat|pos|clearall|export>";
     }
 
     /** Require operator-level permission — this is a dev/testing tool. */
@@ -59,18 +80,23 @@ public class GameTestCommand extends CommandBase {
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
         if (args.length == 0) {
-            sender.addChatMessage(
-                new ChatComponentText(EnumChatFormatting.YELLOW + "Usage: " + getCommandUsage(sender)));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.YELLOW + "Usage: " + getCommandUsage(sender)));
             return;
         }
-
-        if ("export".equals(args[0])) {
-            handleExport(sender, args);
-        } else {
-            sender.addChatMessage(
-                new ChatComponentText(
+        switch (args[0]) {
+            case "run":       handleRun(sender, args);       break;
+            case "runall":    handleRunAll(sender, args);    break;
+            case "runfailed": handleRunFailed(sender, args); break;
+            case "runthis":   handleRunThis(sender, args);   break;
+            case "runthat":   handleRunThat(sender, args);   break;
+            case "pos":       handlePos(sender, args);       break;
+            case "clearall":  handleClearAll(sender, args);  break;
+            case "export":    handleExport(sender, args);    break;
+            default:
+                sender.addChatMessage(new ChatComponentText(
                     EnumChatFormatting.RED + "Unknown subcommand '" + args[0]
-                        + "'.  Usage: " + getCommandUsage(sender)));
+                        + "'. " + getCommandUsage(sender)));
         }
     }
 
@@ -78,25 +104,258 @@ public class GameTestCommand extends CommandBase {
     @SuppressWarnings("rawtypes")
     public List addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "export");
+            return getListOfStringsMatchingLastWord(args, SUBCOMMANDS);
+        }
+        if (args.length == 2) {
+            if ("run".equals(args[0])) {
+                List<GameTestDefinition> all = GameTestRegistry.getAllTests();
+                String[] ids = new String[all.size()];
+                for (int i = 0; i < all.size(); i++) ids[i] = all.get(i).getTestId();
+                return getListOfStringsMatchingLastWord(args, ids);
+            }
+            if ("runall".equals(args[0])) {
+                Set<String> namespaces = new LinkedHashSet<>();
+                for (GameTestDefinition def : GameTestRegistry.getAllTests()) {
+                    String id = def.getTestId();
+                    int colon = id.indexOf(':');
+                    if (colon > 0) namespaces.add(id.substring(0, colon));
+                }
+                return getListOfStringsMatchingLastWord(args,
+                    namespaces.toArray(new String[0]));
+            }
         }
         return null;
     }
 
-    // ---- /gametest export <name> ----
+    // =========================================================================
+    // /gametest run <id>
+    // =========================================================================
+
+    private void handleRun(ICommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED + "Usage: /gametest run <testId>"));
+            return;
+        }
+        String testId = args[1];
+        GameTestDefinition def = findDefinition(testId);
+        if (def == null) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED + "Unknown test: '"
+                    + EnumChatFormatting.YELLOW + testId
+                    + EnumChatFormatting.RED + "'. Use /gametest runall to list available tests."));
+            return;
+        }
+        InteractiveTestSession.get().launchTest(def);
+        sender.addChatMessage(new ChatComponentText(
+            EnumChatFormatting.GREEN + "Launched: "
+                + EnumChatFormatting.YELLOW + def.getTestId()));
+    }
+
+    // =========================================================================
+    // /gametest runall [namespace]
+    // =========================================================================
+
+    private void handleRunAll(ICommandSender sender, String[] args) {
+        List<GameTestDefinition> tests;
+        if (args.length >= 2) {
+            String ns = args[1];
+            tests = GameTestRegistry.getTestsForNamespace(ns);
+            if (tests.isEmpty()) {
+                sender.addChatMessage(new ChatComponentText(
+                    EnumChatFormatting.RED + "No tests found for namespace '"
+                        + EnumChatFormatting.YELLOW + ns + EnumChatFormatting.RED + "'."));
+                return;
+            }
+        } else {
+            tests = GameTestRegistry.getAllTests();
+            if (tests.isEmpty()) {
+                sender.addChatMessage(new ChatComponentText(
+                    EnumChatFormatting.YELLOW
+                        + "No tests discovered. Make sure your mod is loaded "
+                        + "and annotated with @GameTestHolder."));
+                return;
+            }
+        }
+        InteractiveTestSession.get().launchTests(tests);
+        sender.addChatMessage(new ChatComponentText(
+            EnumChatFormatting.GREEN + "Launched "
+                + EnumChatFormatting.YELLOW + tests.size()
+                + EnumChatFormatting.GREEN + " test(s)."));
+    }
+
+    // =========================================================================
+    // /gametest runfailed
+    // =========================================================================
+
+    private void handleRunFailed(ICommandSender sender, String[] args) {
+        Set<String> failedIds = InteractiveTestSession.get().getFailedIds();
+        if (failedIds.isEmpty()) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.GREEN + "No failed tests to re-run."));
+            return;
+        }
+        List<GameTestDefinition> defs = new ArrayList<>();
+        for (String id : failedIds) {
+            GameTestDefinition def = findDefinition(id);
+            if (def != null) defs.add(def);
+        }
+        if (defs.isEmpty()) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.YELLOW
+                    + "Could not find definitions for the failed tests — "
+                    + "were they unloaded?"));
+            return;
+        }
+        InteractiveTestSession.get().launchTests(defs);
+        sender.addChatMessage(new ChatComponentText(
+            EnumChatFormatting.GREEN + "Re-running "
+                + EnumChatFormatting.YELLOW + defs.size()
+                + EnumChatFormatting.GREEN + " failed test(s)."));
+    }
+
+    // =========================================================================
+    // /gametest runthis
+    // =========================================================================
+
+    private void handleRunThis(ICommandSender sender, String[] args) {
+        EntityPlayer player = requirePlayer(sender);
+        if (player == null) return;
+
+        int px = (int) Math.floor(player.posX);
+        int py = (int) Math.floor(player.posY);
+        int pz = (int) Math.floor(player.posZ);
+
+        CellRecord cell = GameTestCommandUtils.findTestContaining(px, py, pz,
+            InteractiveTestSession.get().getKnownCells());
+        if (cell == null) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED
+                    + "You are not inside any known test cell. "
+                    + "Run /gametest runall first to place cells."));
+            return;
+        }
+        GameTestDefinition def = findDefinition(cell.testId);
+        if (def == null) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED + "Definition not found for '"
+                    + cell.testId + "'."));
+            return;
+        }
+        InteractiveTestSession.get().relaunchAtCell(def);
+        sender.addChatMessage(new ChatComponentText(
+            EnumChatFormatting.GREEN + "Re-running: "
+                + EnumChatFormatting.YELLOW + def.getTestId()));
+    }
+
+    // =========================================================================
+    // /gametest runthat
+    // =========================================================================
+
+    private void handleRunThat(ICommandSender sender, String[] args) {
+        EntityPlayer player = requirePlayer(sender);
+        if (player == null) return;
+
+        CellRecord cell = GameTestCommandUtils.findTestAlongLook(player,
+            InteractiveTestSession.get().getKnownCells());
+        if (cell == null) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED
+                    + "No test cell in your line of sight (within 64 blocks). "
+                    + "Run /gametest runall first."));
+            return;
+        }
+        GameTestDefinition def = findDefinition(cell.testId);
+        if (def == null) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED + "Definition not found for '"
+                    + cell.testId + "'."));
+            return;
+        }
+        InteractiveTestSession.get().relaunchAtCell(def);
+        sender.addChatMessage(new ChatComponentText(
+            EnumChatFormatting.GREEN + "Re-running: "
+                + EnumChatFormatting.YELLOW + def.getTestId()));
+    }
+
+    // =========================================================================
+    // /gametest pos
+    // =========================================================================
+
+    private void handlePos(ICommandSender sender, String[] args) {
+        EntityPlayer player = requirePlayer(sender);
+        if (player == null) return;
+
+        int px = (int) Math.floor(player.posX);
+        int py = (int) Math.floor(player.posY);
+        int pz = (int) Math.floor(player.posZ);
+
+        // Prefer a cell the player is actually inside; fall back to nearest.
+        CellRecord cell = GameTestCommandUtils.findTestContaining(px, py, pz,
+            InteractiveTestSession.get().getKnownCells());
+        if (cell == null) {
+            cell = GameTestCommandUtils.findNearestTest(px, py, pz,
+                InteractiveTestSession.get().getKnownCells());
+        }
+        if (cell == null) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED
+                    + "No test cells found. Run /gametest runall first."));
+            return;
+        }
+
+        int relX = px - cell.originX;
+        int relY = py - cell.originY;
+        int relZ = pz - cell.originZ;
+        String call = String.format("helper.absolute(%d, %d, %d)", relX, relY, relZ);
+
+        sender.addChatMessage(new ChatComponentText(
+            EnumChatFormatting.AQUA + "Test: " + EnumChatFormatting.YELLOW + cell.testId));
+        sender.addChatMessage(new ChatComponentText(
+            EnumChatFormatting.AQUA + "World:    "
+                + EnumChatFormatting.WHITE
+                + String.format("(%d, %d, %d)", px, py, pz)));
+        sender.addChatMessage(new ChatComponentText(
+            EnumChatFormatting.AQUA + "Relative: "
+                + EnumChatFormatting.WHITE
+                + String.format("(%d, %d, %d)", relX, relY, relZ)));
+
+        // Clickable line — puts the helper.absolute() call into the chat input box.
+        ChatComponentText clickable = new ChatComponentText(
+            EnumChatFormatting.GREEN + call
+                + EnumChatFormatting.GRAY + "  \u00ab click to copy to chat");
+        clickable.setChatStyle(new ChatStyle()
+            .setChatClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, call)));
+        sender.addChatMessage(clickable);
+    }
+
+    // =========================================================================
+    // /gametest clearall
+    // =========================================================================
+
+    private void handleClearAll(ICommandSender sender, String[] args) {
+        int count = InteractiveTestSession.get().getKnownCells().size();
+        InteractiveTestSession.get().clearAll();
+        sender.addChatMessage(new ChatComponentText(
+            EnumChatFormatting.GREEN + "Cleared "
+                + EnumChatFormatting.YELLOW + count
+                + EnumChatFormatting.GREEN + " test cell(s)."));
+    }
+
+    // =========================================================================
+    // /gametest export <name>
+    // =========================================================================
 
     private void handleExport(ICommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.RED + "Usage: /gametest export <name>"));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED + "Usage: /gametest export <name>"));
             return;
         }
 
         if (!(sender instanceof EntityPlayer)) {
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.RED + "This command must be run by a player."));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED + "This command must be run by a player."));
             return;
         }
 
@@ -104,10 +363,9 @@ public class GameTestCommand extends CommandBase {
         ItemStack wand = findWand(player);
 
         if (wand == null) {
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.RED
-                        + "Hold (or have in inventory) a GameTest Wand first."));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED
+                    + "Hold (or have in inventory) a GameTest Wand first."));
             return;
         }
 
@@ -115,19 +373,17 @@ public class GameTestCommand extends CommandBase {
         if (nbt == null
             || !nbt.getBoolean(ItemGameTestWand.TAG_POS1_SET)
             || !nbt.getBoolean(ItemGameTestWand.TAG_POS2_SET)) {
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.RED
-                        + "Wand selection incomplete — left-click Pos1 and right-click Pos2 first."));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED
+                    + "Wand selection incomplete — left-click Pos1 and right-click Pos2 first."));
             return;
         }
 
         String name = args[1];
         if (!name.matches("[A-Za-z0-9_-]+")) {
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.RED
-                        + "Name must contain only letters, digits, underscores, and hyphens."));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED
+                    + "Name must contain only letters, digits, underscores, and hyphens."));
             return;
         }
 
@@ -142,35 +398,46 @@ public class GameTestCommand extends CommandBase {
         int maxX = Math.max(x1, x2), maxY = Math.max(y1, y2), maxZ = Math.max(z1, z2);
 
         WorldServer world = (WorldServer) player.worldObj;
-        // getFile() resolves relative to the server run directory
         File outputDir = MinecraftServer.getServer().getFile("gameteststructures");
 
         try {
             StructureExporter.export(world, minX, minY, minZ, maxX, maxY, maxZ, outputDir, name);
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.GREEN + "Exported '"
-                        + EnumChatFormatting.YELLOW + name
-                        + EnumChatFormatting.GREEN + "' \u2192 "
-                        + EnumChatFormatting.WHITE + outputDir.getAbsolutePath()));
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.GRAY + "  " + name + ".json        (block layout)"));
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.GRAY + "  " + name + "_tiles.nbt   (tile entities)"));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.GREEN + "Exported '"
+                    + EnumChatFormatting.YELLOW + name
+                    + EnumChatFormatting.GREEN + "' \u2192 "
+                    + EnumChatFormatting.WHITE + outputDir.getAbsolutePath()));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.GRAY + "  " + name + ".json        (block layout)"));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.GRAY + "  " + name + "_tiles.nbt   (tile entities)"));
         } catch (IOException e) {
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.RED + "Export failed: " + e.getMessage()));
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED + "Export failed: " + e.getMessage()));
             GameTestMod.LOG.error("StructureExporter failed for '{}'", name, e);
         }
     }
 
-    /**
-     * Returns the held wand stack if available, otherwise searches the player's full inventory.
-     * Returns {@code null} if no wand is found.
-     */
+    // =========================================================================
+    // Shared helpers
+    // =========================================================================
+
+    private static GameTestDefinition findDefinition(String testId) {
+        for (GameTestDefinition def : GameTestRegistry.getAllTests()) {
+            if (def.getTestId().equals(testId)) return def;
+        }
+        return null;
+    }
+
+    private static EntityPlayer requirePlayer(ICommandSender sender) {
+        if (!(sender instanceof EntityPlayer)) {
+            sender.addChatMessage(new ChatComponentText(
+                EnumChatFormatting.RED + "This command must be run by a player."));
+            return null;
+        }
+        return (EntityPlayer) sender;
+    }
+
     private static ItemStack findWand(EntityPlayer player) {
         ItemStack held = player.getHeldItem();
         if (held != null && held.getItem() instanceof ItemGameTestWand) {

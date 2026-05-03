@@ -43,6 +43,16 @@ public class GameTestRunner {
         }
     }
 
+    /**
+     * Add a single instance to the active set without replacing the existing list.
+     * Intended for interactive mode — tests are enqueued individually on demand.
+     * The runner must be {@link #register() registered} before calling this.
+     */
+    public void addInstance(GameTestInstance inst) {
+        instances.add(inst);
+        running = true;
+    }
+
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.START || !running) return;
@@ -62,10 +72,16 @@ public class GameTestRunner {
         }
 
         if (allDone && onAllDone != null) {
+            // CI / batch mode: fire the completion callback.
             running = false;
             Runnable callback = onAllDone;
             onAllDone = null;
             callback.run();
+        } else if (allDone && !instances.isEmpty()) {
+            // Interactive mode (no completion callback): clean up done instances and go
+            // idle. The runner stays registered so addInstance() re-activates it cheaply.
+            instances.clear();
+            running = false;
         }
     }
 

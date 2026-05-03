@@ -6,6 +6,7 @@ import net.minecraftforge.common.MinecraftForge;
 import com.gtnewhorizons.gametest.command.GameTestCommand;
 import com.gtnewhorizons.gametest.core.GameTestBatchRunner;
 import com.gtnewhorizons.gametest.core.GameTestRegistry;
+import com.gtnewhorizons.gametest.core.InteractiveTestSession;
 import com.gtnewhorizons.gametest.item.ItemGameTestWand;
 import com.gtnewhorizons.gametest.visual.SelectionBoxRenderer;
 import com.gtnewhorizons.gametest.world.GameTestWorldType;
@@ -49,14 +50,19 @@ public class CommonProxy {
     public void postInit(FMLPostInitializationEvent event) {}
 
     public void serverStarting(FMLServerStartingEvent event) {
-        // Register the /gametest command regardless of CI mode — it is used interactively
+        // Reset interactive session so a dev-environment server restart starts clean.
+        InteractiveTestSession.reset();
+
+        // Register the /gametest command regardless of CI mode — it is used interactively.
         event.registerServerCommand(new GameTestCommand());
 
-        if (!GameTestJvmFlags.isEnabled()) return;
-
+        // Discover tests for both interactive and CI use.
         GameTestMod.LOG.info("Discovering tests...");
         GameTestRegistry.discoverTests();
 
+        if (!GameTestJvmFlags.isEnabled()) return;
+
+        // CI mode: run all discovered tests and exit with the failure count.
         if (GameTestRegistry.getAllTests()
             .isEmpty()) {
             GameTestMod.LOG.warn("No tests found. Nothing to run.");
@@ -64,7 +70,7 @@ public class CommonProxy {
         }
 
         GameTestMod.LOG.info(
-            "Starting {} test(s).",
+            "Starting {} test(s) in CI mode.",
             GameTestRegistry.getAllTests()
                 .size());
         GameTestBatchRunner batchRunner = new GameTestBatchRunner(
