@@ -16,7 +16,7 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
 public class GameTestMod {
 
     public static final String MODID = "gametest";
-    public static final String NAME = "GTNH GameTest";
+    public static final String NAME = "Horizon QA";
     public static final Logger LOG = LogManager.getLogger(MODID);
 
     @Mod.Instance(GameTestMod.MODID)

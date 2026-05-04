@@ -2,6 +2,7 @@ package com.gtnewhorizons.gametest.item;
 
 import java.util.List;
 
+import com.gtnewhorizons.gametest.GameTestMod;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
@@ -10,8 +11,6 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
-
-import com.gtnewhorizons.gametest.GameTestMod;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -31,8 +30,8 @@ public class ItemGameTestWand extends Item {
 
     public ItemGameTestWand() {
         super();
-        setUnlocalizedName("gametest_wand");
-        setTextureName(GameTestMod.MODID + ":gametest_wand");
+        setUnlocalizedName("gametest.wand");
+        setTextureName("minecraft:blaze_rod");
         setMaxStackSize(1);
         setCreativeTab(CreativeTabs.tabTools);
     }

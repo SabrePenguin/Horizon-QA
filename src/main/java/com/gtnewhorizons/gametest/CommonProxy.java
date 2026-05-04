@@ -23,8 +23,8 @@ public class CommonProxy {
         Config.synchronizeConfiguration(event.getSuggestedConfigurationFile());
 
         GameTestMod.LOG.info(Config.greeting);
-        GameTestMod.LOG.info("I am GTNH GameTest at version " + Tags.VERSION);
-        GameTestMod.LOG.info("GameTest mode (-D{}): {}", GameTestJvmFlags.PROPERTY, GameTestJvmFlags.isEnabled());
+        GameTestMod.LOG.info("I am " + GameTestMod.NAME + " at version " + Tags.VERSION);
+        GameTestMod.LOG.info("Mode (-D{}): {}", GameTestJvmFlags.PROPERTY, GameTestJvmFlags.isEnabled());
         if (GameTestJvmFlags.isEnabled()) {
             GameTestMod.LOG.info(
                 "Void world registered as '{}' (Forge id {}).",
@@ -36,7 +36,7 @@ public class CommonProxy {
         GameTestRegistry.setAsmData(event.getAsmData());
 
         ItemGameTestWand.INSTANCE = new ItemGameTestWand();
-        GameRegistry.registerItem(ItemGameTestWand.INSTANCE, "gametest_wand");
+        GameRegistry.registerItem(ItemGameTestWand.INSTANCE, "wand");
 
         MinecraftForge.EVENT_BUS.register(new SelectionBoxRenderer());
     }
