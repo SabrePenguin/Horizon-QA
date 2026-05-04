@@ -2,7 +2,6 @@ package com.gtnewhorizons.gametest.item;
 
 import java.util.List;
 
-import com.gtnewhorizons.gametest.GameTestMod;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
