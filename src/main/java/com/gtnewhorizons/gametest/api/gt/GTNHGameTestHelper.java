@@ -22,7 +22,7 @@ import com.gtnewhorizons.gametest.api.event.ProgrammedCircuitSet;
 import com.gtnewhorizons.gametest.api.event.state.ExplodedCause;
 import com.gtnewhorizons.gametest.api.gt.adapter.GT5UnofficialAdapter;
 import com.gtnewhorizons.gametest.api.gt.adapter.GTAdapter;
-import com.gtnewhorizons.gametest.core.TestEventRecorder;
+import com.gtnewhorizons.gametest.internal.TestEventRecorder;
 
 import gregtech.api.interfaces.IConfigurationCircuitSupport;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
@@ -71,13 +71,12 @@ public class GTNHGameTestHelper {
         this.originX = originX;
         this.originY = originY;
         this.originZ = originZ;
-        this.recorder = base.getRecorder();
+        this.recorder = (TestEventRecorder) base.getRecorder();
         this.dynamo = new VirtualEUDynamo(recorder);
         this.pollutionBefore = getPollutionAtOrigin();
     }
 
-    /** Event recorder for this test. See {@link TestEventRecorder}. */
-    public TestEventRecorder recorder() {
+    TestEventRecorder recorder() {
         return recorder;
     }
 

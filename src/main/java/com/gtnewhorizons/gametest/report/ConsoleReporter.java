@@ -6,8 +6,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.gtnewhorizons.gametest.api.event.TestEvent;
-import com.gtnewhorizons.gametest.core.GameTestInstance;
-import com.gtnewhorizons.gametest.core.GameTestStatus;
+import com.gtnewhorizons.gametest.internal.GameTestInstance;
+import com.gtnewhorizons.gametest.internal.GameTestStatus;
 
 public final class ConsoleReporter {
 

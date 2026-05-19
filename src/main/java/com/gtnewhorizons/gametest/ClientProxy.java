@@ -2,7 +2,7 @@ package com.gtnewhorizons.gametest;
 
 import net.minecraftforge.common.MinecraftForge;
 
-import com.gtnewhorizons.gametest.core.InteractiveTestSession;
+import com.gtnewhorizons.gametest.internal.InteractiveTestSession;
 import com.gtnewhorizons.gametest.visual.GameTestOverlayRenderer;
 import com.gtnewhorizons.gametest.visual.SelectionOutlineClientRenderer;
 import com.gtnewhorizons.gametest.visual.VisualManager;
