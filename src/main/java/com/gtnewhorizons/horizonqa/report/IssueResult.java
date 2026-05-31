@@ -58,6 +58,19 @@ public record IssueResult(String id, String kind, String classname, String name,
             stackTrace(error));
     }
 
+    public static IssueResult reportPath(String id, String name, String target, String message, Exception error) {
+        String details = "issue.id=" + id + "\ntarget=" + target + "\n";
+        return new IssueResult(
+            id,
+            "REPORT_PATH_ERROR",
+            "horizonqa.reporting",
+            "report-path:" + name,
+            message,
+            details,
+            true,
+            stackTrace(error));
+    }
+
     private static String stackTrace(Exception error) {
         if (error == null) {
             return "";

@@ -97,22 +97,26 @@ public final class HorizonQAProperties {
 
     public static File junitReportFile() {
         if (PARSED.reportFile() != null) {
-            return new File(PARSED.reportFile());
+            return resolveServerFile(PARSED.reportFile());
         }
         if (PARSED.reportDir() != null) {
-            return new File(PARSED.reportDir(), DEFAULT_JUNIT_REPORT);
+            return new File(resolveServerFile(PARSED.reportDir()), DEFAULT_JUNIT_REPORT).toPath()
+                .normalize()
+                .toFile();
         }
-        return new File(DEFAULT_JUNIT_REPORT);
+        return resolveServerFile(DEFAULT_JUNIT_REPORT);
     }
 
     public static File statusReportFile() {
         if (PARSED.statusFile() != null) {
-            return new File(PARSED.statusFile());
+            return resolveServerFile(PARSED.statusFile());
         }
         if (PARSED.reportDir() != null) {
-            return new File(PARSED.reportDir(), DEFAULT_STATUS_REPORT);
+            return new File(resolveServerFile(PARSED.reportDir()), DEFAULT_STATUS_REPORT).toPath()
+                .normalize()
+                .toFile();
         }
-        return new File(DEFAULT_STATUS_REPORT);
+        return resolveServerFile(DEFAULT_STATUS_REPORT);
     }
 
     public static boolean eventsEnabled() {
@@ -303,15 +307,33 @@ public final class HorizonQAProperties {
         if (raw == null) {
             return null;
         }
-        if (raw.isEmpty()) {
+        String value = raw.trim();
+        if (value.isEmpty()) {
             issues.add(
                 configIssue(
                     "config:" + property,
                     property,
-                    "Invalid -D" + property + "=<empty> (expected a file system path)",
+                    "Invalid -D" + property + "=" + renderRawValue(raw) + " (expected a file system path)",
                     true));
+            return null;
         }
-        return raw;
+        return value;
+    }
+
+    static File resolveServerFile(File workingDirectory, String path) {
+        File file = new File(path);
+        if (!file.isAbsolute()) {
+            File base = workingDirectory == null ? new File(System.getProperty("user.dir", ".")) : workingDirectory;
+            file = new File(base, path);
+        }
+        return file.toPath()
+            .toAbsolutePath()
+            .normalize()
+            .toFile();
+    }
+
+    private static File resolveServerFile(String path) {
+        return resolveServerFile(new File(System.getProperty("user.dir", ".")), path);
     }
 
     private static EventsParseResult parseEvents(String raw) {
@@ -344,7 +366,10 @@ public final class HorizonQAProperties {
     }
 
     private static String renderRawValue(String raw) {
-        return raw == null ? "<unset>" : raw.isEmpty() ? "<empty>" : raw;
+        return raw == null ? "<unset>"
+            : raw.isEmpty() ? "<empty>"
+                : raw.trim()
+                    .isEmpty() ? "<blank>" : raw;
     }
 
     public enum Mode {
