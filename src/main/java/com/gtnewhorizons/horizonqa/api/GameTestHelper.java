@@ -7,19 +7,22 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.inventory.ISidedInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
-import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.IFluidHandler;
 
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
 import com.gtnewhorizons.horizonqa.api.event.EventLog;
@@ -27,8 +30,15 @@ import com.gtnewhorizons.horizonqa.api.gt.GTNHGameTestHelper;
 import com.gtnewhorizons.horizonqa.internal.GameTestInstance;
 import com.gtnewhorizons.horizonqa.internal.GameTestSequence;
 import com.mojang.authlib.GameProfile;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fml.common.Loader;
+import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.items.CapabilityItemHandler;
+import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.wrapper.InvWrapper;
+import net.minecraftforge.items.wrapper.SidedInvWrapper;
+import org.jetbrains.annotations.Contract;
 
-import cpw.mods.fml.common.Loader;
 
 /**
  * Passed to every {@code @GameTest} method. Provides world interaction, assertions, and the fluent
@@ -56,8 +66,12 @@ public class GameTestHelper {
     /**
      * Convert test-local block coordinates to an absolute {@link TestPos} in world space.
      */
-    public TestPos absolute(int x, int y, int z) {
-        return new TestPos(originX + x, originY + y, originZ + z);
+    public BlockPos absolute(int x, int y, int z) {
+        return absolute(new BlockPos(x, y, z));
+    }
+
+    public BlockPos absolute(BlockPos pos) {
+        return new BlockPos(originX + pos.getX(), originY + pos.getY(), originZ + pos.getZ());
     }
 
     /**
@@ -510,43 +524,58 @@ public class GameTestHelper {
      * Assert that the block at test-local position is {@code expected} with the given metadata.
      * Pass {@code meta < 0} to skip the meta check.
      */
+    @SuppressWarnings("Deprecation")
     public void assertBlockPresent(Block expected, int meta, int x, int y, int z) {
-        TestPos pos = absolute(x, y, z);
-        Block actual = world.getBlock(pos.x(), pos.y(), pos.z());
-        if (actual != expected) {
+        assertBlockPresent(meta != -1 ? expected.getStateFromMeta(meta) : expected.getDefaultState(), new BlockPos(x, y, z));
+    }
+
+    /**
+     * Assert that the block at test-local position is {@code expected} with the given metadata.
+     * Pass {@code meta < 0} to skip the meta check.
+     */
+    public void assertBlockPresent(IBlockState expected, BlockPos pos) {
+        BlockPos absolute = absolute(pos);
+        Block expectedBlock = expected.getBlock();
+        int expectedMeta = expectedBlock.getMetaFromState(expected);
+        IBlockState actualState = world.getBlockState(absolute);
+        Block actual = actualState.getBlock();
+        if (actual != expectedBlock) {
             throw new GameTestAssertException(
-                "Expected " + Block.blockRegistry.getNameForObject(expected)
-                    + " at ("
-                    + x
-                    + ","
-                    + y
-                    + ","
-                    + z
-                    + ") but found "
-                    + Block.blockRegistry.getNameForObject(actual),
-                pos);
+                "Expected " + expectedBlock.getRegistryName()
+                    + " at "
+                    + pos
+                    + " but found "
+                    + actual.getRegistryName(),
+                absolute);
         }
-        if (meta >= 0) {
-            int actualMeta = world.getBlockMetadata(pos.x(), pos.y(), pos.z());
-            if (actualMeta != meta) {
+        if (expectedMeta >= 0) {
+            int actualMeta = actual.getMetaFromState(actualState);
+            if (actualMeta != expectedMeta) {
                 throw new GameTestAssertException(
-                    "Expected meta " + meta + " at (" + x + "," + y + "," + z + ") but found " + actualMeta,
-                    pos);
+                    "Expected meta " + expectedMeta + " at " + pos + " but found " + actualMeta,
+                    absolute);
             }
         }
     }
+
 
     /**
      * Assert that the block at test-local position {@code (x, y, z)} is NOT {@code unexpected}.
      */
     public void assertBlockAbsent(Block unexpected, int x, int y, int z) {
-        TestPos pos = absolute(x, y, z);
-        Block actual = world.getBlock(pos.x(), pos.y(), pos.z());
-        if (actual == unexpected) {
+        assertBlockAbsent(unexpected.getDefaultState(), new BlockPos(x, y, z));
+    }
+
+    /**
+     * Assert that the block at test-local position {@code pos} is NOT {@code unexpected}.
+     */
+    public void assertBlockAbsent(IBlockState unexpected, BlockPos pos) {
+        BlockPos absolute = absolute(pos);
+        IBlockState actual = world.getBlockState(absolute);
+        if (actual.getBlock() == unexpected.getBlock()) {
             throw new GameTestAssertException(
-                "Expected anything except " + Block.blockRegistry
-                    .getNameForObject(unexpected) + " at (" + x + "," + y + "," + z + ") but found it",
-                pos);
+                "Expected anything except " + unexpected.getBlock().getRegistryName() + " at " + pos + " but found it",
+                absolute);
         }
     }
 
@@ -555,12 +584,18 @@ public class GameTestHelper {
      * Returns the TileEntity for further inspection.
      */
     public TileEntity assertTileEntityPresent(int x, int y, int z) {
-        TestPos pos = absolute(x, y, z);
-        TileEntity te = world.getTileEntity(pos.x(), pos.y(), pos.z());
+        return assertTileEntityPresent(new BlockPos(x, y, z));
+    }
+
+    /**
+     * Assert that a TileEntity exists at test-local position {@code (x, y, z)}.
+     * Returns the TileEntity for further inspection.
+     */
+    public TileEntity assertTileEntityPresent(BlockPos relative) {
+        BlockPos absolute = absolute(relative);
+        TileEntity te = world.getTileEntity(absolute);
         if (te == null) {
-            throw new GameTestAssertException(
-                "Expected a TileEntity at (" + x + "," + y + "," + z + ") but found none",
-                pos);
+            throw new GameTestAssertException("Expected a TileEntity at " + relative + " but found none", absolute);
         }
         return te;
     }
@@ -569,23 +604,26 @@ public class GameTestHelper {
      * Assert that a TileEntity of a specific type exists at test-local position.
      * Returns the TileEntity cast to the requested type.
      */
-    @SuppressWarnings("unchecked")
     public <T extends TileEntity> T assertTileEntityPresent(Class<T> type, int x, int y, int z) {
-        TileEntity te = assertTileEntityPresent(x, y, z);
+        return assertTileEntityPresent(type, new BlockPos(x, y, z));
+    }
+
+    /**
+     * Assert that a TileEntity of a specific type exists at test-local position.
+     * Returns the TileEntity cast to the requested type.
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends TileEntity> T assertTileEntityPresent(Class<T> type, BlockPos pos) {
+        TileEntity te = assertTileEntityPresent(pos);
         if (!type.isInstance(te)) {
-            TestPos pos = absolute(x, y, z);
+            BlockPos absolute = absolute(pos);
             throw new GameTestAssertException(
                 "Expected TileEntity of type " + type.getSimpleName()
-                    + " at ("
-                    + x
-                    + ","
-                    + y
-                    + ","
-                    + z
-                    + ") but found "
-                    + te.getClass()
-                        .getSimpleName(),
-                pos);
+                    + " at "
+                    + pos
+                    + " but found "
+                    + te.getClass().getSimpleName(),
+                absolute);
         }
         return (T) te;
     }
@@ -595,32 +633,36 @@ public class GameTestHelper {
      * {@code expectedSubset}. Only the keys present in {@code expectedSubset} are checked.
      */
     public void assertTileNBT(int x, int y, int z, NBTTagCompound expectedSubset) {
-        TileEntity te = assertTileEntityPresent(x, y, z);
+        assertTileNBT(new BlockPos(x, y, z), expectedSubset);
+    }
+
+    /**
+     * Assert that the TileEntity NBT at test-local position contains all keys/values from
+     * {@code expectedSubset}. Only the keys present in {@code expectedSubset} are checked.
+     */
+    public void assertTileNBT(BlockPos pos, NBTTagCompound expectedSubset) {
+        TileEntity te = assertTileEntityPresent(pos);
         NBTTagCompound actual = new NBTTagCompound();
         te.writeToNBT(actual);
 
-        for (String key : expectedSubset.func_150296_c()) {
+        for (String key : expectedSubset.getKeySet()) {
             if (!actual.hasKey(key)) {
                 throw new GameTestAssertException(
-                    "TileEntity at (" + x + "," + y + "," + z + ") missing NBT key '" + key + "'",
-                    absolute(x, y, z));
+                    "TileEntity at " + pos + " missing NBT key '" + key + "'",
+                    absolute(pos));
             }
             NBTBase expectedTag = expectedSubset.getTag(key);
             NBTBase actualTag = actual.getTag(key);
             if (!expectedTag.equals(actualTag)) {
                 throw new GameTestAssertException(
-                    "TileEntity at (" + x
-                        + ","
-                        + y
-                        + ","
-                        + z
-                        + ") NBT key '"
+                    "TileEntity at " + pos
+                        + " NBT key '"
                         + key
                         + "': expected "
                         + expectedTag
                         + " but found "
                         + actualTag,
-                    absolute(x, y, z));
+                    absolute(pos));
             }
         }
     }
@@ -630,27 +672,31 @@ public class GameTestHelper {
      * Comparison is done via the tag's string representation.
      */
     public void assertTileNBTPath(int x, int y, int z, String path, String expectedValue) {
-        NBTTagCompound nbt = getTileNBT(x, y, z);
+        assertTileNBTPath(new BlockPos(x, y, z), path, expectedValue);
+    }
+
+    /**
+     * Assert a specific value at a dotted NBT path (e.g. {@code "mInventory.0.id"}).
+     * Comparison is done via the tag's string representation.
+     */
+    public void assertTileNBTPath(BlockPos relative, String path, String expectedValue) {
+        NBTTagCompound nbt = getTileNBT(relative);
         String actual = NBTPathAccessor.resolveAsString(nbt, path);
         if (actual == null) {
             throw new GameTestAssertException(
-                "TileEntity at (" + x + "," + y + "," + z + ") has no NBT at path '" + path + "'",
-                absolute(x, y, z));
+                "TileEntity at " + relative + " has no NBT at path '" + path + "'",
+                absolute(relative));
         }
         if (!actual.equals(expectedValue)) {
             throw new GameTestAssertException(
-                "TileEntity at (" + x
-                    + ","
-                    + y
-                    + ","
-                    + z
+                "TileEntity at (" + relative
                     + ") NBT path '"
                     + path
                     + "': expected "
                     + expectedValue
                     + " but found "
                     + actual,
-                absolute(x, y, z));
+                absolute(relative));
         }
     }
 
@@ -658,10 +704,17 @@ public class GameTestHelper {
      * Return a deep copy of the TileEntity's serialized NBT at test-local position.
      */
     public NBTTagCompound getTileNBT(int x, int y, int z) {
-        TileEntity te = assertTileEntityPresent(x, y, z);
+        return getTileNBT(new BlockPos(x, y, z));
+    }
+
+    /**
+     * Return a deep copy of the TileEntity's serialized NBT at test-local position.
+     */
+    public NBTTagCompound getTileNBT(BlockPos relative) {
+        TileEntity te = assertTileEntityPresent(relative);
         NBTTagCompound nbt = new NBTTagCompound();
         te.writeToNBT(nbt);
-        return (NBTTagCompound) nbt.copy();
+        return nbt.copy();
     }
 
     /**
@@ -671,13 +724,30 @@ public class GameTestHelper {
      * @throws GameTestAssertException if no inventory exists or the stack couldn't be fully inserted
      */
     public void insertItem(int x, int y, int z, ItemStack stack) {
-        IInventory inv = getInventoryAt(x, y, z);
-        int leftover = InventoryHelper.insert(inv, stack);
-        if (leftover > 0) {
+        insertItem(new BlockPos(x, y, z), stack, 0);
+    }
+
+    /**
+     * Insert an ItemStack into the inventory at test-local position. Auto-detects
+     * {@code ISidedInventory} vs plain {@code IInventory}.
+     *
+     * @throws GameTestAssertException if no inventory exists or the stack couldn't be fully inserted
+     */
+    public void insertItem(BlockPos relative, ItemStack stack, int slot) {
+        IItemHandler inventory = getItemHandlerAt(relative, null);
+        ItemStack leftover = inventory.insertItem(slot, stack, false);
+        if (leftover.getCount() > 0) {
             throw new GameTestAssertException(
                 "Could not fully insert " + stack
-                    .getDisplayName() + " at (" + x + "," + y + "," + z + "): " + leftover + " items remaining",
-                absolute(x, y, z));
+                    .getDisplayName()
+                    + " into slot "
+                    + slot
+                    + " at "
+                    + relative
+                    + ": "
+                    + leftover.getCount()
+                    + " items remaining",
+                absolute(relative));
         }
     }
 
@@ -693,38 +763,42 @@ public class GameTestHelper {
      * (item, damage, NBT match; stack size is minimum).
      */
     public void assertInventoryContains(int x, int y, int z, ItemStack expected) {
-        IInventory inv = getInventoryAt(x, y, z);
-        if (!InventoryHelper.contains(inv, expected)) {
-            throw new GameTestAssertException(
-                "Inventory at (" + x
-                    + ","
-                    + y
-                    + ","
-                    + z
-                    + ") does not contain "
-                    + expected.stackSize
-                    + "x "
-                    + expected.getDisplayName(),
-                absolute(x, y, z));
-        }
+        assertInventoryContains(new BlockPos(x, y, z), expected);
     }
 
     /**
-     * Assert that the inventory at test-local (relative) TestPos contains at least the given stack.
+     * Assert that the inventory at test-local position contains at least the given stack
+     * (item, damage, NBT match; stack size is minimum).
      */
-    public void assertInventoryContains(TestPos pos, ItemStack expected) {
-        assertInventoryContains(pos.x(), pos.y(), pos.z(), expected);
+    public void assertInventoryContains(BlockPos relative, ItemStack expected) {
+        IItemHandler inventory = getItemHandlerAt(relative);
+        if (!InventoryHelper.contains(inventory, expected)) {
+            throw new GameTestAssertException(
+                "Inventory at " + relative
+                    + " does not contain "
+                    + expected.getCount()
+                    + "x "
+                    + expected.getDisplayName(),
+                absolute(relative));
+        }
     }
 
     /**
      * Assert that every slot of the inventory at test-local position is empty.
      */
     public void assertInventoryEmpty(int x, int y, int z) {
-        IInventory inv = getInventoryAt(x, y, z);
-        if (!InventoryHelper.isEmpty(inv)) {
+        assertInventoryEmpty(new BlockPos(x, y, z));
+    }
+
+    /**
+     * Assert that every slot of the inventory at test-local position is empty.
+     */
+    public void assertInventoryEmpty(BlockPos relative) {
+        IItemHandler inventory = getItemHandlerAt(relative);
+        if (!InventoryHelper.isEmpty(inventory)) {
             throw new GameTestAssertException(
-                "Inventory at (" + x + "," + y + "," + z + ") is not empty",
-                absolute(x, y, z));
+                "Inventory at " + relative + " is not empty",
+                absolute(relative));
         }
     }
 
@@ -732,41 +806,40 @@ public class GameTestHelper {
      * Assert that a specific slot contains the given stack (exact item + damage + NBT + size).
      */
     public void assertSlot(int x, int y, int z, int slot, ItemStack expected) {
-        IInventory inv = getInventoryAt(x, y, z);
-        ItemStack actual = InventoryHelper.getSlot(inv, slot);
+        assertSlot(new BlockPos(x, y, z), slot, expected);
+    }
+
+    /**
+     * Assert that a specific slot contains the given stack (exact item + damage + NBT + size).
+     */
+    public void assertSlot(BlockPos relative, int slot, ItemStack expected) {
+        IItemHandler inventory = getItemHandlerAt(relative);
+        ItemStack actual = inventory.getStackInSlot(slot);
         if (expected == null) {
-            if (actual != null && actual.stackSize > 0) {
+            if (!actual.isEmpty() && actual.getCount() > 0) {
                 throw new GameTestAssertException(
                     "Slot " + slot
-                        + " at ("
-                        + x
-                        + ","
-                        + y
-                        + ","
-                        + z
-                        + ") expected empty but found "
+                        + " at "
+                        + relative
+                        + " expected empty but found "
                         + actual.getDisplayName(),
-                    absolute(x, y, z));
+                    absolute(relative));
             }
             return;
         }
-        if (!InventoryHelper.stacksMatch(actual, expected) || actual.stackSize != expected.stackSize) {
-            String actualStr = actual != null ? actual.stackSize + "x " + actual.getDisplayName() : "<empty>";
+        if (!InventoryHelper.stacksMatch(actual, expected) || actual.getCount() != expected.getCount()) {
+            String actualStr = !actual.isEmpty()? actual.getCount() + "x " + actual.getDisplayName() : "<empty>";
             throw new GameTestAssertException(
                 "Slot " + slot
                     + " at ("
-                    + x
-                    + ","
-                    + y
-                    + ","
-                    + z
+                    + relative
                     + ") expected "
-                    + expected.stackSize
+                    + expected.getCount()
                     + "x "
                     + expected.getDisplayName()
                     + " but found "
                     + actualStr,
-                absolute(x, y, z));
+                absolute(relative));
         }
     }
 
@@ -775,8 +848,34 @@ public class GameTestHelper {
      * Returns the actual amount extracted.
      */
     public int extractItem(int x, int y, int z, ItemStack template, int maxAmount) {
-        IInventory inv = getInventoryAt(x, y, z);
-        return InventoryHelper.extract(inv, template, maxAmount);
+        return extractItem(new BlockPos(x, y, z), template, maxAmount);
+    }
+
+    /**
+     * Extract up to {@code maxAmount} items matching {@code template} from the inventory.
+     * Returns the actual amount extracted.
+     */
+    public int extractItem(BlockPos relative, ItemStack template, int maxAmount) {
+        IItemHandler itemHandler = getItemHandlerAt(relative);
+        return InventoryHelper.extract(itemHandler, template, maxAmount);
+    }
+
+    private IItemHandler getItemHandlerAt(BlockPos relative) {
+        return getItemHandlerAt(relative, null);
+    }
+
+    private IItemHandler getItemHandlerAt(BlockPos relative, EnumFacing facing) {
+        TileEntity te = assertTileEntityPresent(relative);
+        if (te.hasCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, facing)) {
+            return te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, facing);
+        } else if (te instanceof ISidedInventory sided) {
+            return new SidedInvWrapper(sided, facing);
+        } else if (te instanceof IInventory inventory) {
+            return new InvWrapper(inventory);
+        }
+        throw new GameTestAssertException(
+            "TileEntity at " + relative + "is not an IItemHandler (" + te.getClass().getSimpleName() + ")",
+            absolute(relative));
     }
 
     private IInventory getInventoryAt(int x, int y, int z) {
@@ -803,23 +902,28 @@ public class GameTestHelper {
      * @throws GameTestAssertException if no fluid handler exists or the fluid couldn't be fully inserted
      */
     public void insertFluid(int x, int y, int z, FluidStack fluid) {
-        IFluidHandler handler = getFluidHandlerAt(x, y, z);
-        int filled = handler.fill(ForgeDirection.UNKNOWN, fluid, true);
+
+    }
+
+    /**
+     * Insert a FluidStack into the fluid handler at test-local position.
+     *
+     * @throws GameTestAssertException if no fluid handler exists or the fluid couldn't be fully inserted
+     */
+    public void insertFluid(BlockPos relative, FluidStack fluid) {
+        IFluidHandler handler = getFluidHandlerAt(relative);
+        int filled = handler.fill(fluid, true);
         if (filled < fluid.amount) {
             throw new GameTestAssertException(
                 "Could not fully insert " + fluid.amount
                     + "mB of "
                     + fluid.getLocalizedName()
-                    + " at ("
-                    + x
-                    + ","
-                    + y
-                    + ","
-                    + z
-                    + "): only "
+                    + " at "
+                    + relative
+                    + ": only "
                     + filled
                     + "mB accepted",
-                absolute(x, y, z));
+                absolute(relative));
         }
     }
 
@@ -828,23 +932,27 @@ public class GameTestHelper {
      * mB of the expected fluid.
      */
     public void assertFluidTank(int x, int y, int z, FluidStack expected) {
-        IFluidHandler handler = getFluidHandlerAt(x, y, z);
-        FluidStack drained = handler.drain(ForgeDirection.UNKNOWN, expected.copy(), false);
-        if (drained == null || drained.amount < expected.amount || drained.getFluidID() != expected.getFluidID()) {
+        assertFluidTank(new BlockPos(x, y, z), expected);
+    }
+
+    /**
+     * Assert that the fluid handler at test-local position contains at least {@code expected.amount}
+     * mB of the expected fluid.
+     */
+    public void assertFluidTank(BlockPos relative, FluidStack expected) {
+        IFluidHandler handler = getFluidHandlerAt(relative);
+        FluidStack drained = handler.drain(expected.copy(), false);
+        if (drained == null || drained.amount < expected.amount || drained.getFluid() != expected.getFluid()) {
             String actualStr = drained != null ? drained.amount + "mB " + drained.getLocalizedName() : "<empty>";
             throw new GameTestAssertException(
-                "Fluid tank at (" + x
-                    + ","
-                    + y
-                    + ","
-                    + z
-                    + ") expected "
+                "Fluid tank at " + relative
+                    + " expected "
                     + expected.amount
                     + "mB "
                     + expected.getLocalizedName()
                     + " but found "
                     + actualStr,
-                absolute(x, y, z));
+                absolute(relative));
         }
     }
 
@@ -852,37 +960,40 @@ public class GameTestHelper {
      * Assert that the fluid handler at test-local position has no fluid.
      */
     public void assertFluidTankEmpty(int x, int y, int z) {
-        IFluidHandler handler = getFluidHandlerAt(x, y, z);
-        FluidStack drained = handler.drain(ForgeDirection.UNKNOWN, Integer.MAX_VALUE, false);
+        assertFluidTankEmpty(new BlockPos(x, y, z));
+    }
+
+    /**
+     * Assert that the fluid handler at test-local position has no fluid.
+     */
+    public void assertFluidTankEmpty(BlockPos relative) {
+        IFluidHandler handler = getFluidHandlerAt(relative);
+        FluidStack drained = handler.drain(Integer.MAX_VALUE, false);
         if (drained != null && drained.amount > 0) {
             throw new GameTestAssertException(
-                "Fluid tank at (" + x
-                    + ","
-                    + y
-                    + ","
-                    + z
+                "Fluid tank at (" + relative
                     + ") expected empty but found "
                     + drained.amount
                     + "mB "
                     + drained.getLocalizedName(),
-                absolute(x, y, z));
+                absolute(relative));
         }
     }
 
     private IFluidHandler getFluidHandlerAt(int x, int y, int z) {
-        TileEntity te = assertTileEntityPresent(x, y, z);
+        return getFluidHandlerAt(new BlockPos(x, y, z));
+    }
+
+    private IFluidHandler getFluidHandlerAt(BlockPos relative) {
+        TileEntity te = assertTileEntityPresent(relative);
         if (!(te instanceof IFluidHandler handler)) {
             throw new GameTestAssertException(
-                "TileEntity at (" + x
-                    + ","
-                    + y
-                    + ","
-                    + z
-                    + ") is not an IFluidHandler ("
+                "TileEntity at " + relative
+                    + " is not an IFluidHandler ("
                     + te.getClass()
                         .getSimpleName()
                     + ")",
-                absolute(x, y, z));
+                absolute(relative));
         }
         return handler;
     }
@@ -891,8 +1002,15 @@ public class GameTestHelper {
      * Place a block at test-local position. Uses flag 3 (notify + send to client).
      */
     public void setBlock(int x, int y, int z, Block block, int meta) {
-        TestPos pos = absolute(x, y, z);
-        world.setBlock(pos.x(), pos.y(), pos.z(), block, meta, 3);
+        setBlock(new BlockPos(x, y, z), block.getStateFromMeta(meta));
+    }
+
+    /**
+     * Place a block at test-local position. Uses flag 3 (notify + send to client).
+     */
+    public void setBlock(BlockPos relative, IBlockState state) {
+        BlockPos absolute = absolute(relative);
+        world.setBlockState(absolute, state, 3);
     }
 
     public void setBlock(int x, int y, int z, Block block) {
@@ -903,8 +1021,15 @@ public class GameTestHelper {
      * Destroy the block at test-local position (replace with air). Drops are not spawned.
      */
     public void destroyBlock(int x, int y, int z) {
-        TestPos pos = absolute(x, y, z);
-        world.setBlock(pos.x(), pos.y(), pos.z(), Blocks.air, 0, 3);
+        destroyBlock(new BlockPos(x, y, z));
+    }
+
+    /**
+     * Destroy the block at test-local position (replace with air). Drops are not spawned.
+     */
+    public void destroyBlock(BlockPos relative) {
+        BlockPos absolute = absolute(relative);
+        world.setBlockState(absolute, Blocks.AIR.getDefaultState(), 3);
     }
 
     /**
@@ -912,19 +1037,27 @@ public class GameTestHelper {
      * are overwritten with the absolute position so the TE doesn't teleport.
      */
     public void setTile(int x, int y, int z, NBTTagCompound nbt) {
-        TestPos pos = absolute(x, y, z);
-        TileEntity te = world.getTileEntity(pos.x(), pos.y(), pos.z());
+        setTile(new BlockPos(x, y, z), nbt);
+    }
+
+    /**
+     * Apply an NBT compound to the TileEntity at test-local position. The x/y/z keys in the compound
+     * are overwritten with the absolute position so the TE doesn't teleport.
+     */
+    public void setTile(BlockPos relative, NBTTagCompound nbt) {
+        BlockPos absolute = absolute(relative);
+        TileEntity te = world.getTileEntity(absolute);
         if (te == null) {
             throw new GameTestAssertException(
-                "No TileEntity at (" + x + "," + y + "," + z + ") to apply NBT to",
-                absolute(x, y, z));
+                "No TileEntity at " + relative + " to apply NBT to",
+                absolute);
         }
-        NBTTagCompound copy = (NBTTagCompound) nbt.copy();
-        copy.setInteger("x", pos.x());
-        copy.setInteger("y", pos.y());
-        copy.setInteger("z", pos.z());
+        NBTTagCompound copy = nbt.copy();
+        copy.setInteger("x", absolute.getX());
+        copy.setInteger("y", absolute.getY());
+        copy.setInteger("z", absolute.getZ());
         te.readFromNBT(copy);
-        world.markBlockForUpdate(pos.x(), pos.y(), pos.z());
+        world.notifyBlockUpdate(absolute, world.getBlockState(absolute), world.getBlockState(absolute), 3);
     }
 
     /**
@@ -932,8 +1065,16 @@ public class GameTestHelper {
      * Uses a delayed sequence event on the test instance.
      */
     public void pulseRedstone(int x, int y, int z, int durationTicks) {
-        setBlock(x, y, z, Blocks.redstone_block, 0);
-        instance.scheduleDelayed(durationTicks, () -> destroyBlock(x, y, z));
+        pulseRedstone(new BlockPos(x, y, z), durationTicks);
+    }
+
+    /**
+     * Place a redstone block at the given test-local position for {@code durationTicks}, then remove it.
+     * Uses a delayed sequence event on the test instance.
+     */
+    public void pulseRedstone(BlockPos relative, int durationTicks) {
+        setBlock(relative, Blocks.REDSTONE_BLOCK.getDefaultState());
+        instance.scheduleDelayed(durationTicks, () -> destroyBlock(relative));
     }
 
     /**
@@ -943,10 +1084,20 @@ public class GameTestHelper {
      * @param strength 0 to clear, any positive value places a redstone block (full signal 15)
      */
     public void setRedstoneInput(int x, int y, int z, int strength) {
+        setRedstoneInput(new BlockPos(x, y, z), strength);
+    }
+
+    /**
+     * Set a redstone signal source (repeater-like) at test-local position by placing a redstone block
+     * (strength = 15) or air (strength = 0).
+     *
+     * @param strength 0 to clear, any positive value places a redstone block (full signal 15)
+     */
+    public void setRedstoneInput(BlockPos relative, int strength) {
         if (strength > 0) {
-            setBlock(x, y, z, Blocks.redstone_block, 0);
+            setBlock(relative, Blocks.REDSTONE_BLOCK.getDefaultState());
         } else {
-            destroyBlock(x, y, z);
+            destroyBlock(relative);
         }
     }
 
@@ -954,12 +1105,19 @@ public class GameTestHelper {
      * Assert that the block at test-local position is receiving at least {@code minPower} redstone power.
      */
     public void assertRedstonePower(int x, int y, int z, int minPower) {
-        TestPos pos = absolute(x, y, z);
-        int power = world.getStrongestIndirectPower(pos.x(), pos.y(), pos.z());
+        assertRedstonePower(new BlockPos(x, y, z), minPower);
+    }
+
+    /**
+     * Assert that the block at test-local position is receiving at least {@code minPower} redstone power.
+     */
+    public void assertRedstonePower(BlockPos relative, int minPower) {
+        BlockPos absolute = absolute(relative);
+        int power = world.getStrongPower(absolute);
         if (power < minPower) {
             throw new GameTestAssertException(
-                "Expected redstone power >= " + minPower + " at (" + x + "," + y + "," + z + ") but found " + power,
-                pos);
+                "Expected redstone power >= " + minPower + " at " + relative + " but found " + power,
+                absolute);
         }
     }
 
@@ -968,8 +1126,7 @@ public class GameTestHelper {
      * The original {@code randomTickSpeed} value is automatically restored after the test.
      */
     public void disableRandomTicks() {
-        String original = world.getGameRules()
-            .getGameRuleStringValue("randomTickSpeed");
+        String original = world.getGameRules().getString("randomTickSpeed");
         world.getGameRules()
             .setOrCreateGameRule("randomTickSpeed", "0");
         afterTest(
@@ -982,8 +1139,7 @@ public class GameTestHelper {
      * The original time and {@code doDaylightCycle} value are automatically restored after the test.
      */
     public void fixWorldTime(long ticks) {
-        String originalCycle = world.getGameRules()
-            .getGameRuleStringValue("doDaylightCycle");
+        String originalCycle = world.getGameRules().getString("doDaylightCycle");
         long originalTime = world.getWorldTime();
         world.setWorldTime(ticks);
         world.getGameRules()
@@ -1029,20 +1185,38 @@ public class GameTestHelper {
      * Returns true if the activation was handled.
      */
     public boolean simulateRightClick(int x, int y, int z, FakePlayer player, ItemStack heldItem) {
-        TestPos pos = absolute(x, y, z);
-        player.inventory.mainInventory[player.inventory.currentItem] = heldItem;
-        Block block = world.getBlock(pos.x(), pos.y(), pos.z());
-        int meta = world.getBlockMetadata(pos.x(), pos.y(), pos.z());
-        return block.onBlockActivated(world, pos.x(), pos.y(), pos.z(), player, 0, 0.5f, 0.5f, 0.5f);
+        return simulateRightClick(new BlockPos(x, y, z), player, heldItem);
+    }
+
+    /**
+     * Simulate a right-click on the block at test-local position using the given player and held item.
+     * Returns true if the activation was handled.
+     */
+    //TODO: Facing and hand
+    public boolean simulateRightClick(BlockPos relative, FakePlayer player, ItemStack heldItem) {
+        BlockPos absolute = absolute(relative);
+        player.inventory.mainInventory.set(player.inventory.currentItem, heldItem);
+        IBlockState state = world.getBlockState(absolute);
+        Block block = state.getBlock();
+        int meta = block.getMetaFromState(state);
+        return block.onBlockActivated(world, absolute, state, player, EnumHand.MAIN_HAND, EnumFacing.UP,0.5f, 0.5f, 0.5f);
     }
 
     /**
      * Simulate a left-click (block punch) at test-local position.
      */
     public void simulateLeftClick(int x, int y, int z, FakePlayer player) {
-        TestPos pos = absolute(x, y, z);
-        Block block = world.getBlock(pos.x(), pos.y(), pos.z());
-        block.onBlockClicked(world, pos.x(), pos.y(), pos.z(), player);
+
+    }
+
+    /**
+     * Simulate a left-click (block punch) at test-local position.
+     */
+    public void simulateLeftClick(BlockPos relative, FakePlayer player) {
+        BlockPos absolute = absolute(relative);
+        IBlockState state = world.getBlockState(absolute);
+        Block block = state.getBlock();
+        block.onBlockClicked(world, absolute, player);
     }
 
     /**

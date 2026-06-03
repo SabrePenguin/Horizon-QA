@@ -5,6 +5,7 @@ import net.minecraft.inventory.ISidedInventory;
 import net.minecraft.item.ItemStack;
 
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraftforge.items.IItemHandler;
 
 /**
  * Utility for inserting into / querying {@link IInventory} and {@link ISidedInventory} tile entities
@@ -20,65 +21,45 @@ public final class InventoryHelper {
      * (testing all sides), then falls back to plain {@link IInventory} scanning. Returns the leftover
      * amount that could not be inserted (0 = fully inserted).
      */
-    public static int insert(IInventory inventory, ItemStack stack) {
-        if (stack == null || stack.stackSize <= 0) return 0;
+    public static int insert(IItemHandler itemHandler, ItemStack stack) {
+        if (stack == null || stack.getCount() <= 0) return 0;
 
         ItemStack toInsert = stack.copy();
 
-        if (inventory instanceof ISidedInventory sided) {
-            for (int side = 0; side < 6 && toInsert.stackSize > 0; side++) {
-                int[] slots = sided.getAccessibleSlotsFromSide(side);
-                if (slots == null) continue;
-                for (int slot : slots) {
-                    if (!sided.canInsertItem(slot, toInsert, side)) continue;
-                    toInsert.stackSize = mergeIntoSlot(inventory, slot, toInsert);
-                    if (toInsert.stackSize <= 0) return 0;
-                }
-            }
-        } else {
-            for (int slot = 0; slot < inventory.getSizeInventory() && toInsert.stackSize > 0; slot++) {
-                if (!inventory.isItemValidForSlot(slot, toInsert)) continue;
-                toInsert.stackSize = mergeIntoSlot(inventory, slot, toInsert);
-                if (toInsert.stackSize <= 0) return 0;
-            }
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            toInsert = itemHandler.insertItem(i, toInsert, false);
         }
-        return toInsert.stackSize;
+        return toInsert.getCount();
     }
 
     /**
      * Extract up to {@code maxAmount} items matching {@code template} (item + meta + NBT) from the
      * inventory. Returns the actual amount extracted.
      */
-    public static int extract(IInventory inventory, ItemStack template, int maxAmount) {
+    public static int extract(IItemHandler itemHandler, ItemStack template, int maxAmount) {
         if (template == null || maxAmount <= 0) return 0;
 
-        int remaining = maxAmount;
+        ItemStack out = template.copy();
+        out.setCount(0);
 
-        if (inventory instanceof ISidedInventory sided) {
-            for (int side = 0; side < 6 && remaining > 0; side++) {
-                int[] slots = sided.getAccessibleSlotsFromSide(side);
-                if (slots == null) continue;
-                for (int slot : slots) {
-                    remaining -= extractFromSlot(inventory, slot, template, remaining);
-                    if (remaining <= 0) break;
-                }
-            }
-        } else {
-            for (int slot = 0; slot < inventory.getSizeInventory() && remaining > 0; slot++) {
-                remaining -= extractFromSlot(inventory, slot, template, remaining);
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            ItemStack simulated = itemHandler.extractItem(i, maxAmount, true);
+            if (stacksMatch(template, simulated)) {
+                out.grow(simulated.getCount());
             }
         }
-        return maxAmount - remaining;
+
+        return out.getCount();
     }
 
-    /** Check if the inventory contains at least {@code stack.stackSize} items matching {@code stack}. */
-    public static boolean contains(IInventory inventory, ItemStack stack) {
+    /** Check if the inventory contains at least {@code stack.getCount()} items matching {@code stack}. */
+    public static boolean contains(IItemHandler inventory, ItemStack stack) {
         if (stack == null) return true;
-        int needed = stack.stackSize;
-        for (int i = 0; i < inventory.getSizeInventory(); i++) {
-            ItemStack slot = inventory.getStackInSlot(i);
-            if (stacksMatch(slot, stack)) {
-                needed -= slot.stackSize;
+        int needed = stack.getCount();
+        for (int i = 0; i < inventory.getSlots(); i++) {
+            ItemStack slotStack = inventory.getStackInSlot(i);
+            if (stacksMatch(slotStack, stack)) {
+                needed -= slotStack.getCount();
                 if (needed <= 0) return true;
             }
         }
@@ -86,18 +67,12 @@ public final class InventoryHelper {
     }
 
     /** Check if every slot in the inventory is null or has stackSize 0. */
-    public static boolean isEmpty(IInventory inventory) {
-        for (int i = 0; i < inventory.getSizeInventory(); i++) {
-            ItemStack slot = inventory.getStackInSlot(i);
-            if (slot != null && slot.stackSize > 0) return false;
+    public static boolean isEmpty(IItemHandler itemHandler) {
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            if (!itemHandler.getStackInSlot(i).isEmpty())
+                return false;
         }
         return true;
-    }
-
-    /** Get the {@link ItemStack} at a specific slot, or null. */
-    public static ItemStack getSlot(IInventory inventory, int slot) {
-        if (slot < 0 || slot >= inventory.getSizeInventory()) return null;
-        return inventory.getStackInSlot(slot);
     }
 
     /**
@@ -111,38 +86,5 @@ public final class InventoryHelper {
         if (a.getTagCompound() == null || b.getTagCompound() == null) return false;
         return a.getTagCompound()
             .equals(b.getTagCompound());
-    }
-
-    private static int mergeIntoSlot(IInventory inv, int slot, ItemStack toInsert) {
-        ItemStack existing = inv.getStackInSlot(slot);
-        if (existing == null) {
-            int maxStack = Math.min(inv.getInventoryStackLimit(), toInsert.getMaxStackSize());
-            int placing = Math.min(toInsert.stackSize, maxStack);
-            ItemStack placed = toInsert.copy();
-            placed.stackSize = placing;
-            inv.setInventorySlotContents(slot, placed);
-            inv.markDirty();
-            return toInsert.stackSize - placing;
-        }
-        if (!stacksMatch(existing, toInsert)) return toInsert.stackSize;
-        int maxStack = Math.min(inv.getInventoryStackLimit(), existing.getMaxStackSize());
-        int space = maxStack - existing.stackSize;
-        if (space <= 0) return toInsert.stackSize;
-        int transferring = Math.min(toInsert.stackSize, space);
-        existing.stackSize += transferring;
-        inv.markDirty();
-        return toInsert.stackSize - transferring;
-    }
-
-    private static int extractFromSlot(IInventory inv, int slot, ItemStack template, int maxAmount) {
-        ItemStack existing = inv.getStackInSlot(slot);
-        if (existing == null || !stacksMatch(existing, template)) return 0;
-        int taking = Math.min(existing.stackSize, maxAmount);
-        existing.stackSize -= taking;
-        if (existing.stackSize <= 0) {
-            inv.setInventorySlotContents(slot, null);
-        }
-        inv.markDirty();
-        return taking;
     }
 }

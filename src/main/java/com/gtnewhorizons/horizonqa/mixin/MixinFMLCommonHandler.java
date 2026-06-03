@@ -1,13 +1,12 @@
 package com.gtnewhorizons.horizonqa.mixin;
 
+import net.minecraftforge.fml.common.FMLCommonHandler;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gtnewhorizons.horizonqa.internal.GameTestRunner;
-
-import cpw.mods.fml.common.FMLCommonHandler;
 
 @Mixin(value = FMLCommonHandler.class, remap = false)
 public class MixinFMLCommonHandler {

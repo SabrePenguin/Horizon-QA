@@ -1,6 +1,7 @@
 package com.gtnewhorizons.horizonqa.api;
 
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 public class GameTestAssertException extends AssertionError {
@@ -18,11 +19,11 @@ public class GameTestAssertException extends AssertionError {
         this.hasPosition = false;
     }
 
-    public GameTestAssertException(String message, TestPos pos) {
+    public GameTestAssertException(String message, BlockPos pos) {
         super(message);
-        this.x = pos.x();
-        this.y = pos.y();
-        this.z = pos.z();
+        this.x = pos.getX();
+        this.y = pos.getY();
+        this.z = pos.getZ();
         this.hasPosition = true;
     }
 
