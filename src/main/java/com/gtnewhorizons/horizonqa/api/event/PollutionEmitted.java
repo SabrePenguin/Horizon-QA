@@ -1,12 +1,12 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record PollutionEmitted(int tick, TestPos originChunk, long amount, long cumulativeSinceStart)
+public record PollutionEmitted(int tick, BlockPos originChunk, long amount, long cumulativeSinceStart)
     implements TestEvent {
 
     @Override

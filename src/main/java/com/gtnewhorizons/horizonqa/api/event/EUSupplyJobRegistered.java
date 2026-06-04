@@ -1,12 +1,12 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record EUSupplyJobRegistered(int tick, TestPos hatch, long voltage, long amperage, int durationTicks)
+public record EUSupplyJobRegistered(int tick, BlockPos hatch, long voltage, long amperage, int durationTicks)
     implements TestEvent {
 
     @Override

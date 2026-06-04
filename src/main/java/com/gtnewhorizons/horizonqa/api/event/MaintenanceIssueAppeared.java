@@ -1,12 +1,12 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record MaintenanceIssueAppeared(int tick, TestPos controller, String issueType) implements TestEvent {
+public record MaintenanceIssueAppeared(int tick, BlockPos controller, String issueType) implements TestEvent {
 
     @Override
     public String category() {

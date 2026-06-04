@@ -1,12 +1,12 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record CleanroomEfficiencyChanged(int tick, TestPos controller, int efficiencyTenThousandths)
+public record CleanroomEfficiencyChanged(int tick, BlockPos controller, int efficiencyTenThousandths)
     implements TestEvent {
 
     @Override

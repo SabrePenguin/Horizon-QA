@@ -1,18 +1,27 @@
 package com.gtnewhorizons.horizonqa.api.gt;
 
+import gregtech.api.metatileentity.MetaTileEntity;
+import gregtech.api.metatileentity.interfaces.IGregTechTileEntity;
+import gregtech.api.metatileentity.multiblock.MultiblockControllerBase;
+import gregtech.api.metatileentity.multiblock.RecipeMapMultiblockController;
+import gregtech.api.recipes.Recipe;
+import gregtech.api.recipes.RecipeBuilder;
+import gregtech.api.recipes.RecipeMap;
+import gregtech.api.recipes.ingredients.IntCircuitIngredient;
+import gregtech.api.util.EnumValidationResult;
+import gregtech.api.util.ValidationResult;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
-import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.IFluidHandler;
 
 import com.gtnewhorizons.horizonqa.api.GameTestAssertException;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
 import com.gtnewhorizons.horizonqa.api.event.CleanroomEfficiencyChanged;
 import com.gtnewhorizons.horizonqa.api.event.EUSupplyJobRegistered;
@@ -25,21 +34,17 @@ import com.gtnewhorizons.horizonqa.api.gt.adapter.GT5UnofficialAdapter;
 import com.gtnewhorizons.horizonqa.api.gt.adapter.GTAdapter;
 import com.gtnewhorizons.horizonqa.internal.TestEventRecorder;
 
-import cpw.mods.fml.common.Loader;
-import gregtech.api.interfaces.IConfigurationCircuitSupport;
-import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
-import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
-import gregtech.api.recipe.RecipeMap;
-import gregtech.api.util.GTRecipe;
-import gregtech.api.util.GTRecipeBuilder;
-import gregtech.api.util.GTUtility;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.items.IItemHandlerModifiable;
+
+import java.util.List;
 
 /**
  * GT-specific test helper returned by {@link GameTestHelper#gtnh()}.
  *
  * <p>
- * All {@link TestPos} arguments use <em>test-local (relative)</em> coordinates — the same
+ * All {@link BlockPos} arguments use <em>test-local (relative)</em> coordinates — the same
  * convention as the int-coordinate overloads on {@link GameTestHelper}. Internally they are
  * converted to world-absolute coordinates via {@link GameTestHelper#absolute}.
  *
@@ -131,13 +136,13 @@ public class GTNHGameTestHelper {
 
     /**
      * Assert that the multiblock controller at {@code relPos} reports a fully formed structure
-     * ({@code mMachine == true}). If the flag is {@code false}, {@link MTEMultiBlockBase#checkStructure}
+     * ({@code mMachine == true}). If the flag is {@code false}, {@link MultiblockControllerBase#checkStructurePattern()}
      * is called with {@code forceReset=true} before failing, to handle cases where the
      * structure placer did not trigger a block-update chain.
      *
      * @see Multiblock#assertFormed()
      */
-    public void assertMachineFormed(TestPos relPos) {
+    public void assertMachineFormed(BlockPos relPos) {
         multiblock(relPos).assertFormed();
     }
 
@@ -148,7 +153,7 @@ public class GTNHGameTestHelper {
      *
      * @see Multiblock#fixMaintenance()
      */
-    public void fixAllMaintenanceIssues(TestPos relPos) {
+    public void fixAllMaintenanceIssues(BlockPos relPos) {
         multiblock(relPos).fixMaintenance();
     }
 
@@ -156,7 +161,7 @@ public class GTNHGameTestHelper {
      * Assert that the multiblock at {@code relPos} currently has <em>all</em> of the given
      * maintenance issues active (i.e. the corresponding tool flag is {@code false}).
      */
-    public void assertMachineHasIssues(TestPos relPos, MaintenanceType... expected) {
+    public void assertMachineHasIssues(BlockPos relPos, MaintenanceType... expected) {
         MTEMultiBlockBase multi = requireMultiBlock(relPos);
         for (MaintenanceType type : expected) {
             if (type.isOk(multi)) {
@@ -179,7 +184,7 @@ public class GTNHGameTestHelper {
      * with the warp differ so per-tick recipe / formation / maintenance / explosion transitions are emitted as
      * {@link com.gtnewhorizons.horizonqa.api.event.TestEvent}s into the per-test recorder.
      */
-    public void fastForwardTicks(int ticks, java.util.List<TestPos> watchedControllersAbs) {
+    public void fastForwardTicks(int ticks, List<BlockPos> watchedControllersAbs) {
         GTAdapter gt = gtAdapter();
         TimeWarpHandler.fastForward(
             world,
@@ -202,8 +207,8 @@ public class GTNHGameTestHelper {
      * == false}, or until {@code timeoutTicks} simulated ticks have elapsed. Throws
      * {@link GameTestAssertException} if the machine is still active at timeout.
      */
-    public void runUntilMachineIdle(TestPos relPos, int timeoutTicks) {
-        TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
+    public void runUntilMachineIdle(BlockPos relative, int timeoutTicks) {
+        BlockPos absolute = base.absolute(relative);
         GTAdapter gt = gtAdapter();
         int simulated = TimeWarpHandler.fastForward(
             world,
@@ -216,23 +221,23 @@ public class GTNHGameTestHelper {
             timeoutTicks,
             dynamo,
             () -> {
-                TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
+                TileEntity te = world.getTileEntity(absolute);
                 return !(te instanceof IGregTechTileEntity igte) || !gt.isActive(igte.getMetaTileEntity());
             },
             recorder,
             gt,
             java.util.Collections.singletonList(abs));
 
-        TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
+        TileEntity te = world.getTileEntity(absolute);
         if (te instanceof IGregTechTileEntity igte && gt.isActive(igte.getMetaTileEntity())) {
             throw error(
-                "Machine at " + relPos
+                "Machine at " + relative
                     + " is still active after "
                     + simulated
                     + " simulated ticks (timeout="
                     + timeoutTicks
                     + ")",
-                relPos);
+                relative);
         }
     }
 
@@ -247,9 +252,9 @@ public class GTNHGameTestHelper {
      * @param amperage      amps per tick
      * @param durationTicks number of simulated ticks to sustain the supply
      */
-    public void supplyEU(TestPos relPos, long voltage, long amperage, int durationTicks) {
-        TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
-        dynamo.addJob(world, abs.x(), abs.y(), abs.z(), voltage, amperage, durationTicks);
+    public void supplyEU(BlockPos relPos, long voltage, long amperage, int durationTicks) {
+        BlockPos abs = base.absolute(relPos);
+        dynamo.addJob(world, abs, voltage, amperage, durationTicks);
         recorder.record(
             () -> new EUSupplyJobRegistered(
                 recorder.clock()
@@ -263,7 +268,7 @@ public class GTNHGameTestHelper {
     /**
      * Assert that the GT tile entity at {@code relPos} has at least {@code expectedEU} stored EU.
      */
-    public void assertEUStored(TestPos relPos, long expectedEU) {
+    public void assertEUStored(BlockPos relPos, long expectedEU) {
         IGregTechTileEntity igte = requireGTTE(relPos);
         long stored = gtAdapter().getStoredEU(igte.getMetaTileEntity());
         if (stored < expectedEU) {
@@ -275,9 +280,9 @@ public class GTNHGameTestHelper {
      * Assert that the block at {@code relPos} is no longer a GT tile entity — i.e. the machine
      * exploded and was replaced by air or debris.
      */
-    public void assertMachineExploded(TestPos relPos) {
-        TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
-        TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
+    public void assertMachineExploded(BlockPos relPos) {
+        BlockPos abs = base.absolute(relPos);
+        TileEntity te = world.getTileEntity(abs);
         if (te instanceof IGregTechTileEntity) {
             throw error("Machine at " + relPos + " did not explode (GT TE still present)", relPos);
         }
@@ -293,7 +298,7 @@ public class GTNHGameTestHelper {
      * Fill the fluid hatch at {@code relPos} with {@code amount} mB of the named fluid.
      *
      * <p>
-     * For GT tile entities the fill is applied directly on the {@link IMetaTileEntity} to
+     * For GT tile entities the fill is applied directly on the {@link MetaTileEntity} to
      * bypass the {@code mTickTimer > 5} guard in {@code BaseMetaTileEntity}, which would return
      * 0 when called before the hatch has been ticked (e.g. during test setup).
      *
@@ -301,7 +306,7 @@ public class GTNHGameTestHelper {
      * @param fluidName Forge registry fluid name (e.g. {@code "nitrogen"})
      * @param amount    mB to fill
      */
-    public void fillHatch(TestPos relPos, String fluidName, int amount) {
+    public void fillHatch(BlockPos relPos, String fluidName, int amount) {
         FluidStack fluid = FluidRegistry.getFluidStack(fluidName, amount);
         if (fluid == null) {
             throw new IllegalArgumentException("Unknown fluid registry name: " + fluidName);
@@ -313,16 +318,16 @@ public class GTNHGameTestHelper {
      * Fill the fluid hatch at {@code relPos} with the given {@link FluidStack}.
      *
      * <p>
-     * For GT tile entities the fill is applied directly on the {@link IMetaTileEntity} to
+     * For GT tile entities the fill is applied directly on the {@link MetaTileEntity} to
      * bypass the {@code mTickTimer > 5} guard in {@code BaseMetaTileEntity}.
      */
-    public void fillHatch(TestPos relPos, FluidStack fluidStack) {
-        TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
-        TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
+    public void fillHatch(BlockPos relPos, FluidStack fluidStack) {
+        BlockPos abs = base.absolute(relPos);
+        TileEntity te = world.getTileEntity(abs);
 
         IFluidHandler handler;
         if (te instanceof IGregTechTileEntity igte) {
-            handler = igte.getMetaTileEntity();
+            handler = igte.getMetaTileEntity().getFluidInventory();
         } else if (te instanceof IFluidHandler fh) {
             handler = fh;
         } else {
@@ -335,7 +340,7 @@ public class GTNHGameTestHelper {
                 relPos);
         }
 
-        int filled = handler.fill(ForgeDirection.UNKNOWN, fluidStack, true);
+        int filled = handler.fill(fluidStack, true);
         if (filled < fluidStack.amount) {
             throw error(
                 "Could not fill " + fluidStack.amount
@@ -365,19 +370,19 @@ public class GTNHGameTestHelper {
      * named fluid.
      *
      * <p>
-     * For GT tile entities the drain-peek is applied directly on the {@link IMetaTileEntity}
+     * For GT tile entities the drain-peek is applied directly on the {@link MetaTileEntity}
      * to bypass the {@code mTickTimer > 5} guard in {@code BaseMetaTileEntity}.
      */
-    public void assertFluidInHatch(TestPos relPos, String fluidName, int amount) {
-        TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
-        TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
+    public void assertFluidInHatch(BlockPos relPos, String fluidName, int amount) {
+        BlockPos abs = base.absolute(relPos);
+        TileEntity te = world.getTileEntity(abs);
         FluidStack expected = FluidRegistry.getFluidStack(fluidName, amount);
         if (expected == null) {
             throw new IllegalArgumentException("Unknown fluid registry name: " + fluidName);
         }
         IFluidHandler handler;
         if (te instanceof IGregTechTileEntity igte) {
-            handler = igte.getMetaTileEntity();
+            handler = igte.getMetaTileEntity().getFluidInventory();
         } else if (te instanceof IFluidHandler fh) {
             handler = fh;
         } else {
@@ -389,8 +394,8 @@ public class GTNHGameTestHelper {
                     + ")",
                 relPos);
         }
-        FluidStack drained = handler.drain(ForgeDirection.UNKNOWN, expected.copy(), false);
-        if (drained == null || drained.getFluidID() != expected.getFluidID() || drained.amount < amount) {
+        FluidStack drained = handler.drain(expected.copy(), false);
+        if (drained == null || drained.getFluid() != expected.getFluid() || drained.amount < amount) {
             String actual = drained != null ? drained.amount + " mB " + drained.getLocalizedName() : "<empty>";
             throw error(
                 "Expected " + amount + " mB of '" + fluidName + "' in hatch at " + relPos + " but found " + actual,
@@ -401,33 +406,30 @@ public class GTNHGameTestHelper {
     /**
      * Configure the programmed circuit slot of the input bus at {@code relPos} to {@code config}
      * (1–24). The circuit is written directly into {@link IConfigurationCircuitSupport#getCircuitSlot()}
-     * on the {@link IMetaTileEntity}, bypassing normal inventory insertion which explicitly skips
+     * on the {@link MetaTileEntity}, bypassing normal inventory insertion which explicitly skips
      * that slot ({@code isValidSlot} returns {@code false} for it).
      *
      * @throws IllegalArgumentException if {@code config} is out of range or the item is unavailable
      * @throws GameTestAssertException  if the tile at {@code relPos} is not a GT input bus
      */
-    public void insertProgrammedCircuit(TestPos relPos, int config) {
-        ItemStack circuit = GTUtility.getIntegratedCircuit(config);
+    public void insertProgrammedCircuit(BlockPos relPos, int config) {
+        ItemStack circuit = IntCircuitIngredient.getIntegratedCircuit(config);
         if (circuit == null) {
-            throw new IllegalArgumentException("GTUtility.getIntegratedCircuit returned null for config " + config);
+            throw new IllegalArgumentException("IntCircuitIngredient.getIntegratedCircuit returned null for config " + config);
         }
         IGregTechTileEntity igte = requireGTTE(relPos);
-        IMetaTileEntity mte = igte.getMetaTileEntity();
-        if (!(mte instanceof IConfigurationCircuitSupport circuitSupport)) {
+        MetaTileEntity mte = igte.getMetaTileEntity();
+        IItemHandlerModifiable importItems = mte.getImportItems();
+        if (importItems.getSlots() == 0) {
             throw error(
                 "TE at " + relPos
-                    + " does not support configuration circuits (found: "
-                    + mte.getClass()
-                        .getSimpleName()
+                    + " does not expose input slots to accept a circuit (found: "
+                    + mte.getClass().getSimpleName()
                     + ")",
                 relPos);
         }
-        if (!circuitSupport.allowSelectCircuit()) {
-            throw error("TE at " + relPos + " has circuit support disabled", relPos);
-        }
-        mte.setInventorySlotContents(circuitSupport.getCircuitSlot(), circuit);
-        TestPos absC = base.absolute(relPos.x(), relPos.y(), relPos.z());
+        importItems.setStackInSlot(0, circuit);
+        BlockPos absC = base.absolute(relPos);
         recorder.record(
             () -> new ProgrammedCircuitSet(
                 recorder.clock()
@@ -445,17 +447,17 @@ public class GTNHGameTestHelper {
      * @param meta         item damage/meta value
      * @param count        minimum stack size to find
      */
-    public void assertItemInBus(TestPos relPos, String registryName, int meta, int count) {
-        Item item = (Item) Item.itemRegistry.getObject(registryName);
+    public void assertItemInBus(BlockPos relPos, String registryName, int meta, int count) {
+        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(registryName));
         if (item == null) {
             throw new IllegalArgumentException("Unknown item registry name: " + registryName);
         }
         ItemStack expected = new ItemStack(item, count, meta);
-        base.assertInventoryContains(relPos.x(), relPos.y(), relPos.z(), expected);
+        base.assertInventoryContains(relPos, expected);
     }
 
-    public void assertItemInBus(TestPos relPos, ItemStack itemStack) {
-        base.assertInventoryContains(relPos.x(), relPos.y(), relPos.z(), itemStack);
+    public void assertItemInBus(BlockPos relPos, ItemStack itemStack) {
+        base.assertInventoryContains(relPos, itemStack);
     }
 
     /**
@@ -476,7 +478,7 @@ public class GTNHGameTestHelper {
             () -> new PollutionEmitted(
                 recorder.clock()
                     .tick(),
-                new TestPos(originX, originY, originZ),
+                new BlockPos(originX, originY, originZ),
                 emitted,
                 emitted));
     }
@@ -485,9 +487,9 @@ public class GTNHGameTestHelper {
      * Assert that the cleanroom controller at {@code relPos} has an efficiency of at least
      * {@code expectedEfficiency} (0–10000, representing 0–100.00 %).
      */
-    public void assertCleanroomStatus(TestPos relPos, int expectedEfficiency) {
+    public void assertCleanroomStatus(BlockPos relPos, int expectedEfficiency) {
         IGregTechTileEntity igte = requireGTTE(relPos);
-        IMetaTileEntity mte = igte.getMetaTileEntity();
+        MetaTileEntity mte = igte.getMetaTileEntity();
         int efficiency;
         try {
             efficiency = gtAdapter().getEfficiency(mte);
@@ -507,7 +509,7 @@ public class GTNHGameTestHelper {
                 relPos);
         }
         final int finalEff = efficiency;
-        TestPos absE = base.absolute(relPos.x(), relPos.y(), relPos.z());
+        BlockPos absE = base.absolute(relPos);
         recorder.record(
             () -> new CleanroomEfficiencyChanged(
                 recorder.clock()
@@ -521,26 +523,19 @@ public class GTNHGameTestHelper {
      * each
      * time.
      */
-    public Multiblock multiblock(TestPos relPos) {
-        TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
+    public Multiblock multiblock(BlockPos relPos) {
+        BlockPos abs = base.absolute(relPos);
         return new Multiblock(this, world, abs);
     }
 
     /**
-     * Inject a synthetic {@link GTRecipe} into the multiblock's recipemap for the rest of the test.
+     * Inject a synthetic {@link Recipe} into the multiblock's recipemap for the rest of the test.
      * The recipe (and its backend caches) is automatically removed when the test ends.
      *
      * @throws GameTestAssertException if the controller does not expose a RecipeMap
      */
-    public void withTestRecipe(Multiblock multi, GTRecipe recipe) {
-        RecipeMap<?> map = multi.resolveRecipeMap();
-        TestRecipeScope scope = new TestRecipeScope(
-            map,
-            recipe,
-            multi.worldServer(),
-            multi.controllerAbsPos(),
-            recorder);
-        base.afterTest(scope::cleanup);
+    public void withTestRecipe(RecipeMapMultiblockController multi, Recipe recipe) {
+        withTestRecipe(multi, new ValidationResult<>(EnumValidationResult.VALID, recipe));
     }
 
     /**
@@ -550,43 +545,56 @@ public class GTNHGameTestHelper {
      *
      * @throws GameTestAssertException if the builder produces no recipe or the controller does not expose a RecipeMap
      */
-    public void withTestRecipe(Multiblock multi, GTRecipeBuilder builder) {
-        GTRecipe recipe = builder.build()
-            .orElseThrow(
-                () -> new GameTestAssertException(
-                    "Recipe builder produced no recipe — verify itemInputs, itemOutputs, duration and eut are set",
-                    multi.controllerAbsPos()));
+    public void withTestRecipe(RecipeMapMultiblockController multi, RecipeBuilder<?> builder) {
+        ValidationResult<Recipe> recipe = builder.build();
+        if (recipe == null) {
+            throw new GameTestAssertException(
+                "Recipe builder produced no recipe — verify itemInputs, itemOutputs, duration and eut are set",
+                multi.getPos());
+        }
         withTestRecipe(multi, recipe);
     }
 
+    public void withTestRecipe(RecipeMapMultiblockController multi, ValidationResult<Recipe> recipe) {
+        RecipeMap<?> map = multi.getRecipeMap();
+        assert map != null;
+        TestRecipeScope scope = new TestRecipeScope(
+            map,
+            recipe,
+            (WorldServer) multi.getWorld(),
+            multi.getPos(),
+            recorder);
+        base.afterTest(scope::cleanup);
+    }
+
     /** Registers a supply job using world-absolute coordinates. Used by {@link Hatch#supply}. */
-    void supplyEUAbsolute(int absX, int absY, int absZ, long voltage, long amperage, int durationTicks) {
-        dynamo.addJob(world, absX, absY, absZ, voltage, amperage, durationTicks);
+    void supplyEUAbsolute(BlockPos absolute, long voltage, long amperage, int durationTicks) {
+        dynamo.addJob(world, absolute, voltage, amperage, durationTicks);
     }
 
-    /** Test-local coordinates from a world-absolute {@link TestPos}. */
-    TestPos absoluteToRelative(TestPos abs) {
-        return new TestPos(abs.x() - originX, abs.y() - originY, abs.z() - originZ);
+    /** Test-local coordinates from a world-absolute {@link BlockPos}. */
+    BlockPos absoluteToRelative(BlockPos abs) {
+        return new BlockPos(abs.getX() - originX, abs.getY() - originY, abs.getZ() - originZ);
     }
 
-    private IGregTechTileEntity requireGTTE(TestPos relPos) {
-        TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
-        TileEntity te = world.getTileEntity(abs.x(), abs.y(), abs.z());
+    private IGregTechTileEntity requireGTTE(BlockPos relative) {
+        BlockPos absolute = base.absolute(relative);
+        TileEntity te = world.getTileEntity(absolute);
         if (!(te instanceof IGregTechTileEntity igte)) {
             throw error(
-                "Expected an IGregTechTileEntity at " + relPos
+                "Expected an IGregTechTileEntity at " + relative
                     + " but found: "
                     + (te != null ? te.getClass()
                         .getSimpleName() : "null"),
-                relPos);
+                relative);
         }
         return igte;
     }
 
-    private MTEMultiBlockBase requireMultiBlock(TestPos relPos) {
+    private MultiblockControllerBase requireMultiBlock(BlockPos relPos) {
         IGregTechTileEntity igte = requireGTTE(relPos);
-        IMetaTileEntity mte = igte.getMetaTileEntity();
-        if (!(mte instanceof MTEMultiBlockBase multi)) {
+        MetaTileEntity mte = igte.getMetaTileEntity();
+        if (!(mte instanceof MultiblockControllerBase multi)) {
             throw error(
                 "TE at " + relPos
                     + " is not an MTEMultiBlockBase (found: "
@@ -598,12 +606,12 @@ public class GTNHGameTestHelper {
         return multi;
     }
 
-    private GameTestAssertException error(String message, TestPos relPos) {
-        TestPos abs = base.absolute(relPos.x(), relPos.y(), relPos.z());
-        return new GameTestAssertException(message, abs);
+    private GameTestAssertException error(String message, BlockPos relative) {
+        BlockPos absolute = base.absolute(relative);
+        return new GameTestAssertException(message, absolute);
     }
 
     private long getPollutionAtOrigin() {
-        return gtAdapter().getPollution(world.getChunkFromBlockCoords(originX, originZ));
+        return gtAdapter().getPollution(world.getChunk(new BlockPos(originX, 0, originZ)));
     }
 }

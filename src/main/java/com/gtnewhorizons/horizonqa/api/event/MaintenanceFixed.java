@@ -1,12 +1,12 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record MaintenanceFixed(int tick, TestPos controller, String typesFixed) implements TestEvent {
+public record MaintenanceFixed(int tick, BlockPos controller, String typesFixed) implements TestEvent {
 
     @Override
     public String category() {

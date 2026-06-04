@@ -1,20 +1,18 @@
 package com.gtnewhorizons.horizonqa.api.gt;
 
-import net.minecraftforge.common.util.ForgeDirection;
+import gregtech.api.metatileentity.MetaTileEntity;
+import gregtech.api.metatileentity.interfaces.IGregTechTileEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.IFluidHandler;
 
 import com.gtnewhorizons.horizonqa.api.GameTestAssertException;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
 import com.gtnewhorizons.horizonqa.api.event.EUSupplyJobRegistered;
 import com.gtnewhorizons.horizonqa.api.event.HatchFilled;
 import com.gtnewhorizons.horizonqa.internal.TestEventRecorder;
+import net.minecraftforge.fluids.capability.IFluidHandler;
 
-import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
-import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.metatileentity.implementations.MTEHatchMultiInput;
 
 /**
  * View of a hatch tile resolved from a controller. Fluid methods use the meta tile entity as {@link IFluidHandler},
@@ -50,9 +48,9 @@ public final class Hatch {
         if (helper == null) {
             throw new IllegalStateException(label + " was not configured for EU supply (not an energy hatch handle)");
         }
-        helper.supplyEUAbsolute(te.getXCoord(), te.getYCoord(), te.getZCoord(), voltage, amperage, durationTicks);
+        helper.supplyEUAbsolute(te.getMetaTileEntity().getPos(), voltage, amperage, durationTicks);
         TestEventRecorder rec = helper.recorder();
-        TestPos pos = new TestPos(te.getXCoord(), te.getYCoord(), te.getZCoord());
+        BlockPos pos = te.getMetaTileEntity().getPos();
         rec.record(
             () -> new EUSupplyJobRegistered(
                 rec.clock()
@@ -66,8 +64,8 @@ public final class Hatch {
 
     public Hatch fill(FluidStack fluid) {
         if (fluid == null) return this;
-        IFluidHandler handler = requireMte();
-        int filled = handler.fill(ForgeDirection.UNKNOWN, fluid, true);
+        IFluidHandler handler = requireMte().getFluidInventory();
+        int filled = handler.fill(fluid, true);
         if (filled < fluid.amount) {
             throw new GameTestAssertException(
                 "Could not fill " + fluid.amount
@@ -78,20 +76,17 @@ public final class Hatch {
                     + "; only "
                     + filled
                     + " mB accepted",
-                te.getXCoord(),
-                te.getYCoord(),
-                te.getZCoord());
+                te.pos());
         }
         if (recorder != null) {
             final TestEventRecorder rec = recorder;
             final int finalFilled = filled;
             final FluidStack fs = fluid;
-            TestPos pos = new TestPos(te.getXCoord(), te.getYCoord(), te.getZCoord());
             rec.record(
                 () -> new HatchFilled(
                     rec.clock()
                         .tick(),
-                    pos,
+                    te.pos(),
                     FluidRegistry.getFluidName(fs),
                     fs.amount,
                     finalFilled));
@@ -106,20 +101,18 @@ public final class Hatch {
      */
     public void assertContains(FluidStack fluid) {
         if (fluid == null) return;
-        IMetaTileEntity mte = requireMte();
+        MetaTileEntity mte = requireMte();
         if (mte instanceof MTEHatchMultiInput multiInput) {
             for (FluidStack stored : multiInput.getStoredFluid()) {
-                if (stored != null && stored.getFluidID() == fluid.getFluidID() && stored.amount >= fluid.amount)
+                if (stored != null && stored.getFluid() == fluid.getFluid() && stored.amount >= fluid.amount)
                     return;
             }
             throw new GameTestAssertException(
                 "Expected " + fluid.amount + " mB of '" + fluid.getLocalizedName() + "' in " + label + " but not found",
-                te.getXCoord(),
-                te.getYCoord(),
-                te.getZCoord());
+                te.getMetaTileEntity().getPos());
         }
-        FluidStack drained = ((IFluidHandler) mte).drain(ForgeDirection.UNKNOWN, fluid.copy(), false);
-        if (drained == null || drained.getFluidID() != fluid.getFluidID() || drained.amount < fluid.amount) {
+        FluidStack drained = ((IFluidHandler) mte).drain(fluid.copy(), false);
+        if (drained == null || drained.getFluid() != fluid.getFluid() || drained.amount < fluid.amount) {
             String actual = drained != null ? drained.amount + " mB " + drained.getLocalizedName() : "<empty>";
             throw new GameTestAssertException(
                 "Expected " + fluid.amount
@@ -129,9 +122,7 @@ public final class Hatch {
                     + label
                     + " but found "
                     + actual,
-                te.getXCoord(),
-                te.getYCoord(),
-                te.getZCoord());
+                te.pos());
         }
     }
 
@@ -140,37 +131,31 @@ public final class Hatch {
      * checking all internal fluid slots.
      */
     public void assertEmpty() {
-        IMetaTileEntity mte = requireMte();
+        MetaTileEntity mte = requireMte();
         if (mte instanceof MTEHatchMultiInput multiInput) {
             for (FluidStack stored : multiInput.getStoredFluid()) {
                 if (stored != null && stored.amount > 0) {
                     throw new GameTestAssertException(
                         label + " is not empty; contains " + stored.amount + " mB of " + stored.getLocalizedName(),
-                        te.getXCoord(),
-                        te.getYCoord(),
-                        te.getZCoord());
+                        te.pos());
                 }
             }
             return;
         }
-        FluidStack drained = ((IFluidHandler) mte).drain(ForgeDirection.UNKNOWN, Integer.MAX_VALUE, false);
+        FluidStack drained = mte.getFluidInventory().drain(Integer.MAX_VALUE, false);
         if (drained != null && drained.amount > 0) {
             throw new GameTestAssertException(
                 label + " is not empty; contains " + drained.amount + " mB of " + drained.getLocalizedName(),
-                te.getXCoord(),
-                te.getYCoord(),
-                te.getZCoord());
+                te.pos());
         }
     }
 
-    private IMetaTileEntity requireMte() {
-        IMetaTileEntity mte = te.getMetaTileEntity();
+    private MetaTileEntity requireMte() {
+        MetaTileEntity mte = te.getMetaTileEntity();
         if (mte == null) {
             throw new GameTestAssertException(
                 label + " has no meta tile entity (cannot access fluid hatch)",
-                te.getXCoord(),
-                te.getYCoord(),
-                te.getZCoord());
+                te.pos());
         }
         return mte;
     }

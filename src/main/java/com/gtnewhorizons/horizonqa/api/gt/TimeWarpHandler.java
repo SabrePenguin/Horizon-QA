@@ -2,24 +2,24 @@ package com.gtnewhorizons.horizonqa.api.gt;
 
 import java.util.List;
 
+import gregtech.api.metatileentity.interfaces.IGregTechTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ITickable;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
 import com.gtnewhorizons.horizonqa.api.event.WarpFinished;
 import com.gtnewhorizons.horizonqa.api.event.WarpStarted;
 import com.gtnewhorizons.horizonqa.api.gt.adapter.GTAdapter;
 import com.gtnewhorizons.horizonqa.internal.TestEventRecorder;
 
-import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-
 @Experimental
 class TimeWarpHandler {
 
     static int fastForward(WorldServer world, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, int maxTicks,
         VirtualEUDynamo dynamo, StopCondition stopCondition, TestEventRecorder recorder, GTAdapter adapter,
-        List<TestPos> watchedControllers) {
+        List<BlockPos> watchedControllers) {
 
         WarpDiffer differ = null;
         if (recorder != null && adapter != null && watchedControllers != null && !watchedControllers.isEmpty()) {
@@ -67,13 +67,13 @@ class TimeWarpHandler {
     }
 
     private static void tickGTRegion(WorldServer world, int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
-
+        BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
-                    TileEntity te = world.getTileEntity(x, y, z);
-                    if (te instanceof IGregTechTileEntity) {
-                        te.updateEntity();
+                    TileEntity te = world.getTileEntity(mutableBlockPos.setPos(x, y, z));
+                    if (te instanceof IGregTechTileEntity && te instanceof ITickable tickable) {
+                        tickable.update();
                     }
                 }
             }

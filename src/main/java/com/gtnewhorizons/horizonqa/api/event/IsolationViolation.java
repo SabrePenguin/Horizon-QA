@@ -1,12 +1,12 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record IsolationViolation(int tick, String culprit, TestPos landedAtAbs, String detail) implements TestEvent {
+public record IsolationViolation(int tick, String culprit, BlockPos landedAtAbs, String detail) implements TestEvent {
 
     @Override
     public String category() {

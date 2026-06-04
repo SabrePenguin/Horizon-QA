@@ -1,6 +1,8 @@
 package com.gtnewhorizons.horizonqa.api.gt;
 
+import net.minecraft.block.Block;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
 import com.gtnewhorizons.horizonqa.api.GameTestAssertException;
@@ -28,7 +30,7 @@ import gregtech.common.tileentities.machines.MTEHatchInputME;
  * on each call (not cached), so they stay valid across structure rescans.
  *
  * <p>
- * Create with {@link GTNHGameTestHelper#multiblock(TestPos)}. Mod-specific controllers that keep hatches off the
+ * Create with {@link GTNHGameTestHelper#multiblock(BlockPos)}. Mod-specific controllers that keep hatches off the
  * standard
  * {@link MTEMultiBlockBase} lists are not covered.
  */
@@ -38,13 +40,13 @@ public final class Multiblock {
     private static final int DEFAULT_RUN_TICKS = 1500;
 
     private final WorldServer world;
-    private final TestPos absPos;
+    private final BlockPos absolute;
     private final GTNHGameTestHelper helper;
 
-    Multiblock(GTNHGameTestHelper helper, WorldServer world, TestPos absPos) {
+    Multiblock(GTNHGameTestHelper helper, WorldServer world, BlockPos absolute) {
         this.helper = helper;
         this.world = world;
-        this.absPos = absPos;
+        this.absolute = absolute;
     }
 
     /**
@@ -396,7 +398,7 @@ public final class Multiblock {
         return multi;
     }
 
-    private TestPos relPos() {
+    private Block relPos() {
         return helper.absoluteToRelative(absPos);
     }
 

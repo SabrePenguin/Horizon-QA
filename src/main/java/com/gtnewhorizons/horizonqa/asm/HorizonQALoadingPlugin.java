@@ -1,10 +1,11 @@
 package com.gtnewhorizons.horizonqa.asm;
 
+import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
+
 import java.util.Map;
 
-import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
-@IFMLLoadingPlugin.MCVersion("1.7.10")
+@IFMLLoadingPlugin.MCVersion("1.12.2")
 @IFMLLoadingPlugin.SortingIndex(11)
 public class HorizonQALoadingPlugin implements IFMLLoadingPlugin {
 

@@ -5,10 +5,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import gregtech.api.metatileentity.MetaTileEntity;
+import gregtech.api.metatileentity.interfaces.IGregTechTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
 import com.gtnewhorizons.horizonqa.api.event.MachineDeformed;
 import com.gtnewhorizons.horizonqa.api.event.MachineExploded;
@@ -27,9 +29,6 @@ import com.gtnewhorizons.horizonqa.api.event.state.RecipeStateSnapshot;
 import com.gtnewhorizons.horizonqa.api.gt.adapter.GTAdapter;
 import com.gtnewhorizons.horizonqa.internal.TestEventRecorder;
 
-import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
-import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-
 /**
  * Per-warp diff helper. Pre-snapshots watched controllers, then on every simulated tick compares fresh state
  * against the last snapshot and records {@link com.gtnewhorizons.horizonqa.api.event.TestEvent}s for the
@@ -45,13 +44,13 @@ final class WarpDiffer {
     private final WorldServer world;
     private final TestEventRecorder recorder;
     private final GTAdapter adapter;
-    private final List<TestPos> watched;
-    private final Map<TestPos, RecipeStateSnapshot> lastState = new HashMap<>();
-    private final Map<TestPos, MaintenanceSnapshot> lastMaintenance = new HashMap<>();
-    private final Map<TestPos, Integer> lastProgressMilestone = new HashMap<>();
-    private final List<TestPos> dropped = new ArrayList<>();
+    private final List<BlockPos> watched;
+    private final Map<BlockPos, RecipeStateSnapshot> lastState = new HashMap<>();
+    private final Map<BlockPos, MaintenanceSnapshot> lastMaintenance = new HashMap<>();
+    private final Map<BlockPos, Integer> lastProgressMilestone = new HashMap<>();
+    private final List<BlockPos> dropped = new ArrayList<>();
 
-    WarpDiffer(WorldServer world, TestEventRecorder recorder, GTAdapter adapter, List<TestPos> watched) {
+    WarpDiffer(WorldServer world, TestEventRecorder recorder, GTAdapter adapter, List<BlockPos> watched) {
         this.world = world;
         this.recorder = recorder;
         this.adapter = adapter;
@@ -62,8 +61,8 @@ final class WarpDiffer {
      * Take pre-warp snapshots and emit {@code MachineFormed(OBSERVED_ON_FIRST_POLL)} for already-formed controllers.
      */
     void primeBeforeWarp() {
-        for (TestPos pos : watched) {
-            IMetaTileEntity mte = mteAt(pos);
+        for (BlockPos pos : watched) {
+            MetaTileEntity mte = mteAt(pos);
             if (mte == null) {
                 dropped.add(pos);
                 continue;
@@ -92,8 +91,8 @@ final class WarpDiffer {
 
     /** Diff each watched controller against its prior snapshot, emitting transitions. */
     void onTickEnd() {
-        for (TestPos pos : watched) {
-            IMetaTileEntity mte = mteAt(pos);
+        for (BlockPos pos : watched) {
+            MetaTileEntity mte = mteAt(pos);
             if (mte == null) {
                 handleControllerGone(pos);
                 continue;
@@ -112,7 +111,7 @@ final class WarpDiffer {
         dropped.clear();
     }
 
-    private void diffFormation(TestPos pos, IMetaTileEntity mte, RecipeStateSnapshot prev, RecipeStateSnapshot now) {
+    private void diffFormation(BlockPos pos, MetaTileEntity mte, RecipeStateSnapshot prev, RecipeStateSnapshot now) {
         if (prev.formed() == now.formed()) return;
         if (now.formed()) {
             String cls = mte.getClass()
@@ -136,7 +135,7 @@ final class WarpDiffer {
         }
     }
 
-    private void diffRecipe(TestPos pos, RecipeStateSnapshot prev, RecipeStateSnapshot now) {
+    private void diffRecipe(BlockPos pos, RecipeStateSnapshot prev, RecipeStateSnapshot now) {
         boolean wasRunning = prev.maxProgressTime() > 0 && prev.progressTime() > 0;
         boolean nowRunning = now.maxProgressTime() > 0 && now.progressTime() > 0;
 
@@ -199,7 +198,7 @@ final class WarpDiffer {
         }
     }
 
-    private void diffMaintenance(TestPos pos, IMetaTileEntity mte) {
+    private void diffMaintenance(BlockPos pos, MetaTileEntity mte) {
         MaintenanceSnapshot prev = lastMaintenance.getOrDefault(pos, MaintenanceSnapshot.OK);
         MaintenanceSnapshot now = adapter.snapshotMaintenance(mte);
         int newlySet = now.newlySetSince(prev);
@@ -219,7 +218,7 @@ final class WarpDiffer {
         lastMaintenance.put(pos, now);
     }
 
-    private void handleControllerGone(TestPos pos) {
+    private void handleControllerGone(BlockPos pos) {
         RecipeStateSnapshot prev = lastState.get(pos);
         boolean wasFormed = prev != null && prev.formed();
         recorder.record(
@@ -239,8 +238,8 @@ final class WarpDiffer {
         dropped.add(pos);
     }
 
-    private IMetaTileEntity mteAt(TestPos pos) {
-        TileEntity te = world.getTileEntity(pos.x(), pos.y(), pos.z());
+    private MetaTileEntity mteAt(BlockPos pos) {
+        TileEntity te = world.getTileEntity(pos);
         if (!(te instanceof IGregTechTileEntity igte)) return null;
         return igte.getMetaTileEntity();
     }

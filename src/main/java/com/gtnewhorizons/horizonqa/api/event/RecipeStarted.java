@@ -1,12 +1,12 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record RecipeStarted(int tick, TestPos controller, long eut, int durationTicks, int parallels)
+public record RecipeStarted(int tick, BlockPos controller, long eut, int durationTicks, int parallels)
     implements TestEvent {
 
     @Override

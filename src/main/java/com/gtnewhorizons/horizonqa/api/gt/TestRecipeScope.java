@@ -2,26 +2,24 @@ package com.gtnewhorizons.horizonqa.api.gt;
 
 import java.lang.reflect.Field;
 
+import gregtech.api.metatileentity.interfaces.IGregTechTileEntity;
+import gregtech.api.recipes.Recipe;
+import gregtech.api.recipes.RecipeMap;
+import gregtech.api.util.EnumValidationResult;
+import gregtech.api.util.ValidationResult;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.event.TestRecipeInjected;
 import com.gtnewhorizons.horizonqa.api.event.TestRecipeRemoved;
 import com.gtnewhorizons.horizonqa.internal.TestEventRecorder;
 
-import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.logic.ProcessingLogic;
-import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
-import gregtech.api.recipe.RecipeMap;
-import gregtech.api.recipe.RecipeMapBackend;
-import gregtech.api.util.GTRecipe;
-
 /**
- * Internal handle to an active injection of a synthetic {@link GTRecipe} into a multiblock's recipemap.
+ * Internal handle to an active injection of a synthetic {@link Recipe} into a multiblock's recipemap.
  * Created by {@link GTNHGameTestHelper#withTestRecipe}, which registers {@link #cleanup()} to run at end
  * of test. The recipe (and its backend caches) is removed when cleanup runs.
  *
@@ -61,24 +59,24 @@ final class TestRecipeScope {
     }
 
     private final RecipeMap<?> recipeMap;
-    private final GTRecipe recipe;
+    private final Recipe recipe;
     private final WorldServer world;
-    private final TestPos controllerAbsPos;
+    private final BlockPos controllerAbsPos;
     private final TestEventRecorder recorder;
     private boolean closed = false;
 
-    TestRecipeScope(RecipeMap<?> recipeMap, GTRecipe recipe, WorldServer world, TestPos controllerAbsPos,
+    TestRecipeScope(RecipeMap<?> recipeMap, ValidationResult<Recipe> recipe, WorldServer world, BlockPos controllerAbsPos,
         TestEventRecorder recorder) {
         this.recipeMap = recipeMap;
-        this.recipe = recipe;
+        this.recipe = recipe.getResult();
         this.world = world;
         this.controllerAbsPos = controllerAbsPos;
         this.recorder = recorder;
-        recipeMap.add(recipe);
+        recipeMap.addRecipe(recipe);
         if (recorder != null) {
             String mapName = recipeMap.unlocalizedName;
-            int eut = recipe.mEUt;
-            int dur = recipe.mDuration;
+            int eut = recipe.getResult().getEUt();
+            int dur = recipe.getResult().getDuration();
             recorder.record(
                 () -> new TestRecipeInjected(
                     recorder.clock()
@@ -107,7 +105,7 @@ final class TestRecipeScope {
         }
 
         if (CACHE_MAP_FIELD != null) try {
-            GTRecipe[] cache = (GTRecipe[]) CACHE_MAP_FIELD.get(backend);
+            Recipe[] cache = (Recipe[]) CACHE_MAP_FIELD.get(backend);
             for (int i = 0; i < cache.length; i++) {
                 if (cache[i] == recipe) cache[i] = null;
             }
@@ -122,7 +120,7 @@ final class TestRecipeScope {
         if (PROCESSING_LOGIC_FIELD != null && LAST_RECIPE_FIELD != null) try {
             ProcessingLogic pl = (ProcessingLogic) PROCESSING_LOGIC_FIELD.get(multi);
             if (pl == null) return;
-            GTRecipe last = (GTRecipe) LAST_RECIPE_FIELD.get(pl);
+            Recipe last = (Recipe) LAST_RECIPE_FIELD.get(pl);
             if (last == recipe) {
                 LOG.debug("TestRecipeScope: synthetic recipe was consumed at controller {}", controllerAbsPos);
                 LAST_RECIPE_FIELD.set(pl, null);

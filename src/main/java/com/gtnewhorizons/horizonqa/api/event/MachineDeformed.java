@@ -1,13 +1,13 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
 import com.gtnewhorizons.horizonqa.api.event.state.DeformedCause;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record MachineDeformed(int tick, TestPos controller, DeformedCause cause) implements TestEvent {
+public record MachineDeformed(int tick, BlockPos controller, DeformedCause cause) implements TestEvent {
 
     @Override
     public String category() {

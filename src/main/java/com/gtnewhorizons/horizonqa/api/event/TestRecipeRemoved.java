@@ -1,12 +1,12 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record TestRecipeRemoved(int tick, TestPos controller, String recipeMap) implements TestEvent {
+public record TestRecipeRemoved(int tick, BlockPos controller, String recipeMap) implements TestEvent {
 
     @Override
     public String category() {

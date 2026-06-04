@@ -3,10 +3,11 @@ package com.gtnewhorizons.horizonqa.api.event;
 import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record HatchFilled(int tick, TestPos hatch, String fluidName, int amountMb, int accepted) implements TestEvent {
+public record HatchFilled(int tick, BlockPos hatch, String fluidName, int amountMb, int accepted) implements TestEvent {
 
     @Override
     public String category() {

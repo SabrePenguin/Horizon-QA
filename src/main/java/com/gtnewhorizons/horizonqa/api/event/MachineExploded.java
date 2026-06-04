@@ -1,13 +1,13 @@
 package com.gtnewhorizons.horizonqa.api.event;
 
 import com.github.bsideup.jabel.Desugar;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
 import com.gtnewhorizons.horizonqa.api.event.state.ExplodedCause;
+import net.minecraft.util.math.BlockPos;
 
 @Experimental
 @Desugar
-public record MachineExploded(int tick, TestPos controller, ExplodedCause cause) implements TestEvent {
+public record MachineExploded(int tick, BlockPos controller, ExplodedCause cause) implements TestEvent {
 
     @Override
     public String category() {
