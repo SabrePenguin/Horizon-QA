@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.gtnewhorizons.horizonqa.world.VoidWorldProvider;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 
@@ -16,7 +17,6 @@ import com.gtnewhorizons.horizonqa.internal.GameTestRegistry;
 import com.gtnewhorizons.horizonqa.internal.GameTestSelection;
 import com.gtnewhorizons.horizonqa.internal.GameTestSelection.SelectionIssue;
 import com.gtnewhorizons.horizonqa.internal.InteractiveTestSession;
-import com.gtnewhorizons.horizonqa.item.ItemHorizonWand;
 import com.gtnewhorizons.horizonqa.report.ConsoleReporter;
 import com.gtnewhorizons.horizonqa.report.IssueResult;
 import com.gtnewhorizons.horizonqa.report.JUnitXmlReporter;
@@ -24,14 +24,11 @@ import com.gtnewhorizons.horizonqa.report.ReportPathPreflight;
 import com.gtnewhorizons.horizonqa.report.RunResult;
 import com.gtnewhorizons.horizonqa.report.StatusJsonReporter;
 import com.gtnewhorizons.horizonqa.visual.SelectionBoxRenderer;
-import com.gtnewhorizons.horizonqa.world.GameTestWorldType;
-
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.event.FMLInitializationEvent;
-import cpw.mods.fml.common.event.FMLPostInitializationEvent;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import cpw.mods.fml.common.registry.GameRegistry;
+import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 
 public class CommonProxy {
 
@@ -49,15 +46,12 @@ public class CommonProxy {
         if (HorizonQAProperties.isCi()) {
             HorizonQAMod.LOG.info(
                 "Void world registered as '{}' (Forge id {}).",
-                GameTestWorldType.INSTANCE.getWorldTypeName(),
-                GameTestWorldType.INSTANCE.getWorldTypeID());
+                VoidWorldProvider.getType(),
+                VoidWorldProvider.VOID_WORLD_ID);
         }
 
         ForgeChunkManager.setForcedChunkLoadingCallback(HorizonQAMod.instance, HorizonQAMod.CHUNK_LOADER);
         GameTestRegistry.setAsmData(event.getAsmData());
-
-        ItemHorizonWand.INSTANCE = new ItemHorizonWand();
-        GameRegistry.registerItem(ItemHorizonWand.INSTANCE, "wand");
 
         if (HorizonQAProperties.isActive()) {
             MinecraftForge.EVENT_BUS.register(new SelectionBoxRenderer());

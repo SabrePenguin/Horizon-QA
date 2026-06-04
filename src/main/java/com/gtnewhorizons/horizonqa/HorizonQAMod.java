@@ -1,22 +1,22 @@
 package com.gtnewhorizons.horizonqa;
 
+import com.gtnewhorizons.horizonqa.world.VoidWorldProvider;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.SidedProxy;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.SidedProxy;
-import cpw.mods.fml.common.event.FMLInitializationEvent;
-import cpw.mods.fml.common.event.FMLPostInitializationEvent;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.event.FMLServerStartingEvent;
-
 @Mod(
     modid = HorizonQAMod.MODID,
     version = Tags.VERSION,
     name = HorizonQAMod.NAME,
-    acceptedMinecraftVersions = "[1.7.10]")
+    acceptedMinecraftVersions = "[1.12.2]")
 public class HorizonQAMod {
 
     public static final String MODID = "horizonqa";
@@ -35,6 +35,7 @@ public class HorizonQAMod {
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
+        VoidWorldProvider.setType();
         proxy.preInit(event);
     }
 

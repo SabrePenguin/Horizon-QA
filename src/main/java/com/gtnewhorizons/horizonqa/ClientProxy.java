@@ -7,8 +7,7 @@ import com.gtnewhorizons.horizonqa.visual.GameTestOverlayRenderer;
 import com.gtnewhorizons.horizonqa.visual.SelectionOutlineClientRenderer;
 import com.gtnewhorizons.horizonqa.visual.VisualManager;
 import com.gtnewhorizons.horizonqa.visual.WandHudOverlay;
-
-import cpw.mods.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 
 public class ClientProxy extends CommonProxy {
 
