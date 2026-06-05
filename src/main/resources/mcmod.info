@@ -1,11 +1,11 @@
 {
 	"modListVersion": 2,
 	"modList": [{
-		"modid": "${modId}",
-		"name": "${modName}",
+		"modid": "${modid}",
+		"name": "${modname}",
 		"description": "A 1.7.10 backport of the modern Minecraft GameTest framework. Provides structure-based testing and unit testing tools for the GTNH ecosystem.",
-		"version": "${modVersion}",
-		"mcversion": "${minecraftVersion}",
+		"version": "${version}",
+		"mcversion": "${mcversion}",
 		"url": "https://github.com/GTNewHorizons/Horizon-QA",
 		"updateUrl": "",
 		"authorList": ["Worive"],
