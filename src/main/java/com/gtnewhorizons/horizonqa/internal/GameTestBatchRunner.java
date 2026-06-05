@@ -13,16 +13,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
+import net.minecraftforge.fml.common.FMLCommonHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizons.horizonqa.HorizonQAMod;
 import com.gtnewhorizons.horizonqa.HorizonQAProperties;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.event.StructurePlaced;
 import com.gtnewhorizons.horizonqa.api.gt.GTNHGameTestHelper;
 import com.gtnewhorizons.horizonqa.internal.InvalidBatchHook.HookPhase;
@@ -36,8 +36,6 @@ import com.gtnewhorizons.horizonqa.structure.HybridStructureLoader;
 import com.gtnewhorizons.horizonqa.structure.HybridStructureTemplate;
 import com.gtnewhorizons.horizonqa.structure.StructurePlacer;
 import com.gtnewhorizons.horizonqa.structure.TemplateException;
-
-import cpw.mods.fml.common.FMLCommonHandler;
 
 public class GameTestBatchRunner {
 
@@ -99,8 +97,7 @@ public class GameTestBatchRunner {
             return;
         }
 
-        WorldServer world = MinecraftServer.getServer()
-            .worldServerForDimension(0);
+        WorldServer world = FMLCommonHandler.instance().getMinecraftServerInstance().getWorld(0);
         if (world == null) {
             IssueResult rootIssue = worldUnavailableIssue(batch.name, remainingTestCount(idx));
             LOG.error(rootIssue.message());
@@ -157,7 +154,7 @@ public class GameTestBatchRunner {
             if (p.template != null) {
                 final String templateName = p.def.getTemplateName();
                 final int sx = p.tmplSizeX, sy = p.tmplSizeY, sz = p.tmplSizeZ;
-                final TestPos origin = new TestPos(p.originX, p.originY, p.originZ);
+                final BlockPos origin = new BlockPos(p.originX, p.originY, p.originZ);
                 TestEventRecorder rec = inst.getRecorder();
                 rec.record(
                     () -> new StructurePlaced(

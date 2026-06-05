@@ -3,9 +3,9 @@ package com.gtnewhorizons.horizonqa.visual.drawables;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 
+import net.minecraft.util.math.MathHelper;
 import org.lwjgl.opengl.GL11;
 
 public final class DebugBeacon {
@@ -42,7 +42,7 @@ public final class DebugBeacon {
         Tessellator tess = Tessellator.instance;
 
         float animationTime = (float) worldTime + partialTicks;
-        float vScrollOffset = -animationTime * 0.2F - (float) MathHelper.floor_float(-animationTime * 0.1F);
+        float vScrollOffset = -animationTime * 0.2F - (float) MathHelper.floor(-animationTime * 0.1F);
 
         byte b0 = 1;
         double rotationAngle = (double) animationTime * 0.025D * (1.0D - (double) (b0 & 1) * 2.5D);

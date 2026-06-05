@@ -10,8 +10,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
+import net.minecraftforge.fml.common.FMLCommonHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -111,9 +113,9 @@ public class InteractiveTestSession {
         LOG.info(
             "[GameTest] Re-launched '{}' in-place at ({}, {}, {}).",
             def.getTestId(),
-            existing.originX,
-            existing.originY,
-            existing.originZ);
+            existing.originX(),
+            existing.originY(),
+            existing.originZ());
         return true;
     }
 
@@ -198,15 +200,12 @@ public class InteractiveTestSession {
             originX,
             originY,
             originZ,
-            sizeX,
-            sizeY,
-            sizeZ,
-            cellMinX,
+            new BlockPos(cellMinX,
             cellMinY,
-            cellMinZ,
-            cellMaxX,
+            cellMinZ),
+            new BlockPos(cellMaxX,
             cellMaxY,
-            cellMaxZ);
+            cellMaxZ));
     }
 
     private static boolean forcePlannedArea(WorldServer world, List<PlannedTest> planned) {
@@ -350,7 +349,7 @@ public class InteractiveTestSession {
     }
 
     private static void clearCell(WorldServer world, CellRecord cell) {
-        GridSweeper.clearAndNotify(world, cell.minX, cell.minY, cell.minZ, cell.maxX, cell.maxY, cell.maxZ);
+        GridSweeper.clearAndNotify(world, cell.minPos(), cell.maxPos());
     }
 
     private static HybridStructureTemplate loadTemplate(GameTestDefinition def) {
@@ -376,12 +375,12 @@ public class InteractiveTestSession {
     }
 
     private static WorldServer getOverworld() {
-        MinecraftServer srv = MinecraftServer.getServer();
+        MinecraftServer srv = FMLCommonHandler.instance().getMinecraftServerInstance();
         if (srv == null) {
             LOG.error("[GameTest] MinecraftServer is null — cannot run tests.");
             return null;
         }
-        WorldServer world = srv.worldServerForDimension(0);
+        WorldServer world = srv.getWorld(0);
         if (world == null) {
             LOG.error("[GameTest] Overworld (dim 0) is null — cannot run tests.");
         }

@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.opengl.GL11;
 
 import com.gtnewhorizons.horizonqa.command.HorizonQACommandUtils.CellRecord;
@@ -16,8 +17,6 @@ import com.gtnewhorizons.horizonqa.visual.drawables.DebugBeacon;
 import com.gtnewhorizons.horizonqa.visual.drawables.FloatingText;
 import com.gtnewhorizons.horizonqa.visual.drawables.GhostBlockDiff;
 import com.gtnewhorizons.horizonqa.visual.drawables.HighlightBox;
-
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 public final class GameTestOverlayRenderer {
 
@@ -34,15 +33,20 @@ public final class GameTestOverlayRenderer {
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.theWorld == null || mc.thePlayer == null) return;
+        if (mc.world == null || mc.player == null) return;
 
-        EntityLivingBase viewer = mc.renderViewEntity instanceof EntityLivingBase ? mc.renderViewEntity : mc.thePlayer;
+        EntityLivingBase viewer;
+        if (mc.getRenderViewEntity() instanceof EntityLivingBase entityLivingBase) {
+            viewer = entityLivingBase;
+        } else {
+            viewer = mc.player;
+        }
 
-        float pt = event.partialTicks;
+        float pt = event.getPartialTicks();
         double camX = viewer.lastTickPosX + (viewer.posX - viewer.lastTickPosX) * pt;
         double camY = viewer.lastTickPosY + (viewer.posY - viewer.lastTickPosY) * pt;
         double camZ = viewer.lastTickPosZ + (viewer.posZ - viewer.lastTickPosZ) * pt;
-        long wt = mc.theWorld.getTotalWorldTime();
+        long wt = mc.world.getTotalWorldTime();
 
         InteractiveTestSession session = InteractiveTestSession.get();
         Collection<CellRecord> cells = session.getKnownCells();
@@ -67,27 +71,23 @@ public final class GameTestOverlayRenderer {
         GL11.glTranslated(-camX, -camY, -camZ);
 
         for (CellRecord cell : cells) {
-            GameTestInstance inst = session.getLastInstance(cell.testId);
+            GameTestInstance inst = session.getLastInstance(cell.testId());
             GameTestStatus status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
             if (status == GameTestStatus.NOT_STARTED) continue;
 
             float[] col = statusColor(status);
 
             HighlightBox.render(
-                cell.minX,
-                cell.minY,
-                cell.minZ,
-                cell.maxX + 1.0,
-                cell.maxY + 1.0,
-                cell.maxZ + 1.0,
+                cell.minPos(),
+                cell.maxPos(),
                 1.0f,
                 1.0f,
                 1.0f,
                 0.5f);
 
-            double bcx = cell.minX - 0.5;
-            double bcy = cell.minY;
-            double bcz = cell.minZ - 0.5;
+            double bcx = cell.minPos().getX() - 0.5;
+            double bcy = cell.minPos().getY();
+            double bcz = cell.minPos().getZ() - 0.5;
             DebugBeacon.render(bcx, bcy, bcz, col[0], col[1], col[2], pt, wt);
         }
 
@@ -96,14 +96,14 @@ public final class GameTestOverlayRenderer {
         }
 
         for (CellRecord cell : cells) {
-            GameTestInstance inst = session.getLastInstance(cell.testId);
+            GameTestInstance inst = session.getLastInstance(cell.testId());
             GameTestStatus status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
             if (status == GameTestStatus.NOT_STARTED) continue;
 
-            double bcx = cell.minX - 0.5;
-            double bcz = cell.minZ - 0.5;
+            double bcx = cell.minPos().getX() - 0.5;
+            double bcz = cell.minPos().getZ() - 0.5;
 
-            FloatingText.render(bcx, cell.minY + TEXT_Y_LIFT, bcz, buildLines(cell.testId, status, inst), pt);
+            FloatingText.render(bcx, cell.minPos().getY() + TEXT_Y_LIFT, bcz, buildLines(cell.testId(), status, inst), pt);
 
             if (inst.hasFailPosition()) {
                 String failLabel = null;
@@ -148,20 +148,20 @@ public final class GameTestOverlayRenderer {
             boolean hasPos = inst.hasFailPosition();
 
             if (msg != null && !msg.isEmpty()) {
-                String detail = (status == GameTestStatus.ERROR ? "\u00a7d" : "\u00a7c")
+                String detail = (status == GameTestStatus.ERROR ? "§d" : "§c")
                     + ellipsize(msg, MAX_CELL_FAILURE_CHARS);
                 if (hasPos) {
                     return new String[] { name, statusLine, detail,
-                        String.format("\u00a78%d %d %d\u00a7r", inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
+                        String.format("§8%d %d %d§r", inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
                 }
                 return new String[] { name, statusLine, detail };
             }
 
-            String fallback = status == GameTestStatus.ERROR ? "\u00a7dCleanup error - see log\u00a7r"
-                : "\u00a7cNon-assertion error - see log\u00a7r";
+            String fallback = status == GameTestStatus.ERROR ? "§dCleanup error - see log§r"
+                : "§cNon-assertion error - see log§r";
             if (hasPos) {
                 return new String[] { name, statusLine, fallback,
-                    String.format("\u00a78%d %d %d\u00a7r", inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
+                    String.format("§8%d %d %d§r", inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
             }
             return new String[] { name, statusLine, fallback };
         }
@@ -171,30 +171,30 @@ public final class GameTestOverlayRenderer {
 
     private static String ellipsize(String s, int maxChars) {
         if (s.length() <= maxChars) return s;
-        if (maxChars <= 1) return "\u2026";
-        return s.substring(0, maxChars - 1) + "\u2026";
+        if (maxChars <= 1) return "…";
+        return s.substring(0, maxChars - 1) + "…";
     }
 
     private static String statusLabel(GameTestStatus s, GameTestInstance inst) {
         String base = switch (s) {
-            case RUNNING -> "\u00a77RUNNING\u00a7r";
-            case PASSED -> "\u00a7aPASSED\u00a7r";
-            case FAILED -> "\u00a7cFAILED\u00a7r";
-            case ERROR -> "\u00a7dERROR\u00a7r";
-            case TIMED_OUT -> "\u00a76TIMED OUT\u00a7r";
-            default -> "\u00a77\u2014\u00a7r";
+            case RUNNING -> "§7RUNNING§r";
+            case PASSED -> "§aPASSED§r";
+            case FAILED -> "§cFAILED§r";
+            case ERROR -> "§dERROR§r";
+            case TIMED_OUT -> "§6TIMED OUT§r";
+            default -> "§7—§r";
         };
         if (inst == null) return base;
         if (s == GameTestStatus.RUNNING) {
             int t = inst.getTickCount();
             int lim = inst.getDefinition()
                 .getTimeoutTicks();
-            return base + String.format(" \u00a78%d/%d t\u00a7r", t, lim);
+            return base + String.format(" §8%d/%d t§r", t, lim);
         }
         if (s == GameTestStatus.TIMED_OUT) {
             int lim = inst.getDefinition()
                 .getTimeoutTicks();
-            return base + String.format(" \u00a78(after %d t)\u00a7r", lim);
+            return base + String.format(" §8(after %d t)§r", lim);
         }
         return base;
     }

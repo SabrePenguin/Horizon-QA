@@ -1,9 +1,14 @@
 package com.gtnewhorizons.horizonqa.visual.drawables;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
 
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
 import org.lwjgl.opengl.GL11;
 
 public final class HighlightBox {
@@ -12,58 +17,36 @@ public final class HighlightBox {
 
     private HighlightBox() {}
 
-    public static void render(double minX, double minY, double minZ, double maxX, double maxY, double maxZ, float r,
-        float g, float b, float alpha) {
+    public static void render(BlockPos pos1, BlockPos pos2, float r,
+                              float g, float b, float alpha) {
 
         Minecraft mc = Minecraft.getMinecraft();
-        Entity view = mc.renderViewEntity != null ? mc.renderViewEntity : mc.thePlayer;
+        Entity view = mc.getRenderViewEntity() != null ? mc.getRenderViewEntity() : mc.player;
         if (view == null) return;
         double vx = view.posX, vy = view.posY, vz = view.posZ;
-        double nearX = vx < minX ? minX : vx > maxX ? maxX : vx;
-        double nearY = vy < minY ? minY : vy > maxY ? maxY : vy;
-        double nearZ = vz < minZ ? minZ : vz > maxZ ? maxZ : vz;
+        double nearX = vx < pos1.getX() ? pos1.getX() : Math.min(vx, pos2.getX());
+        double nearY = vy < pos1.getY() ? pos1.getY() : Math.min(vy, pos2.getY());
+        double nearZ = vz < pos1.getZ() ? pos1.getZ() : Math.min(vz, pos2.getZ());
         double dx = vx - nearX, dy = vy - nearY, dz = vz - nearZ;
         if (dx * dx + dy * dy + dz * dz > 32.0 * 32.0) return;
 
-        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_LINE_BIT | GL11.GL_COLOR_BUFFER_BIT);
-        try {
-            GL11.glEnable(GL11.GL_DEPTH_TEST);
-            GL11.glDepthFunc(GL11.GL_LEQUAL);
-            GL11.glDepthMask(false);
-            GL11.glDisable(GL11.GL_TEXTURE_2D);
-            GL11.glDisable(GL11.GL_CULL_FACE);
-            GL11.glEnable(GL11.GL_LINE_SMOOTH);
-            GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
-            GL11.glLineWidth(LINE_WIDTH);
-            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        RenderManager rm = Minecraft.getMinecraft().getRenderManager();
 
-            Tessellator tess = Tessellator.instance;
-            tess.startDrawing(GL11.GL_LINES);
+        double x = rm.viewerPosX;
+        double y = rm.viewerPosY;
+        double z = rm.viewerPosZ;
 
-            line(tess, minX, minY, minZ, maxX, minY, minZ, r, g, b, alpha);
-            line(tess, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, alpha);
-            line(tess, maxX, minY, maxZ, minX, minY, maxZ, r, g, b, alpha);
-            line(tess, minX, minY, maxZ, minX, minY, minZ, r, g, b, alpha);
-            line(tess, minX, maxY, minZ, maxX, maxY, minZ, r, g, b, alpha);
-            line(tess, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, alpha);
-            line(tess, maxX, maxY, maxZ, minX, maxY, maxZ, r, g, b, alpha);
-            line(tess, minX, maxY, maxZ, minX, maxY, minZ, r, g, b, alpha);
-            line(tess, minX, minY, minZ, minX, maxY, minZ, r, g, b, alpha);
-            line(tess, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, alpha);
-            line(tess, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, alpha);
-            line(tess, minX, minY, maxZ, minX, maxY, maxZ, r, g, b, alpha);
-
-            tess.draw();
-        } finally {
-            GL11.glPopAttrib();
-        }
-    }
-
-    private static void line(Tessellator tess, double ax, double ay, double az, double bx, double by, double bz,
-        float r, float g, float b, float alpha) {
-        tess.setColorRGBA_F(r, g, b, alpha);
-        tess.addVertex(ax, ay, az);
-        tess.setColorRGBA_F(r, g, b, alpha);
-        tess.addVertex(bx, by, bz);
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+        GlStateManager.enableDepth();
+        GlStateManager.depthFunc(GL11.GL_EQUAL);
+        GlStateManager.depthMask(false);
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
+        GlStateManager.glLineWidth(LINE_WIDTH);
+        GlStateManager.enableCull();
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        GlStateManager.disableBlend();
+        RenderGlobal.drawSelectionBoundingBox(new AxisAlignedBB(pos1, pos2), r, g, b, alpha);
     }
 }

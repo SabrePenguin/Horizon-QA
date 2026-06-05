@@ -1,6 +1,7 @@
 package com.gtnewhorizons.horizonqa.mixin;
 
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.GameType;
 import net.minecraft.world.WorldSettings;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.storage.WorldInfo;
@@ -19,9 +20,9 @@ public abstract class MixinMinecraftServer {
         method = "loadAllWorlds",
         at = @At(
             value = "NEW",
-            target = "(JLnet/minecraft/world/WorldSettings$GameType;ZZLnet/minecraft/world/WorldType;)Lnet/minecraft/world/WorldSettings;"))
-    private WorldSettings gametest$newSettingsFromSeed(long seed, WorldSettings.GameType gameType, boolean mapFeatures,
-        boolean hardcore, WorldType requestedType) {
+            target = "(JLnet/minecraft/world/GameType;ZZLnet/minecraft/world/WorldType;)Lnet/minecraft/world/WorldSettings;"))
+    private WorldSettings gametest$newSettingsFromSeed(long seed, GameType gameType, boolean mapFeatures,
+                                                       boolean hardcore, WorldType requestedType) {
         if (!HorizonQAProperties.isCi()) {
             return new WorldSettings(seed, gameType, mapFeatures, hardcore, requestedType);
         }
@@ -43,6 +44,6 @@ public abstract class MixinMinecraftServer {
             false,
             info.isHardcoreModeEnabled(),
             GameTestWorldType.INSTANCE);
-        return recreated.func_82750_a(info.getGeneratorOptions());
+        return recreated.setGeneratorOptions(info.getGeneratorOptions());
     }
 }

@@ -5,15 +5,15 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.MovingObjectPosition;
+import net.minecraft.util.EnumHand;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.opengl.GL11;
 
 import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizons.horizonqa.item.ItemHorizonWand;
 
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 public final class SelectionOutlineClientRenderer {
 
@@ -67,11 +67,16 @@ public final class SelectionOutlineClientRenderer {
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
-        EntityLivingBase viewer = mc.renderViewEntity instanceof EntityLivingBase ? mc.renderViewEntity : mc.thePlayer;
-        if (viewer == null || mc.theWorld == null) return;
+        EntityLivingBase viewer;
+         if(mc.getRenderViewEntity() instanceof EntityLivingBase livingBase) {
+             viewer = livingBase;
+         } else {
+             viewer = mc.player;
+         }
+        if (viewer == null || mc.world == null) return;
 
-        ItemStack held = mc.thePlayer.getHeldItem();
-        if (held == null || !(held.getItem() instanceof ItemHorizonWand)) return;
+        ItemStack held = mc.player.getHeldItem(EnumHand.MAIN_HAND);
+        if (held.isEmpty() || !(held.getItem() instanceof ItemHorizonWand)) return;
 
         NBTTagCompound nbt = held.getTagCompound();
         boolean pos1Set = nbt != null && nbt.getBoolean(ItemHorizonWand.TAG_POS1_SET);
@@ -80,11 +85,11 @@ public final class SelectionOutlineClientRenderer {
 
         int[] wandTarget = resolveWandTarget(mc);
 
-        float pt = event.partialTicks;
+        float pt = event.getPartialTicks();
         double vx = viewer.lastTickPosX + (viewer.posX - viewer.lastTickPosX) * pt;
         double vy = viewer.lastTickPosY + (viewer.posY - viewer.lastTickPosY) * pt;
         double vz = viewer.lastTickPosZ + (viewer.posZ - viewer.lastTickPosZ) * pt;
-        float wtime = mc.theWorld.getTotalWorldTime() + pt;
+        float wtime = mc.world.getTotalWorldTime() + pt;
 
         GL11.glPushMatrix();
         GL11.glTranslated(-vx, -vy, -vz);

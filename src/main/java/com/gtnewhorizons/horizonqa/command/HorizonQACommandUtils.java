@@ -2,8 +2,11 @@ package com.gtnewhorizons.horizonqa.command;
 
 import java.util.Collection;
 
+import com.github.bsideup.jabel.Desugar;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.Vec3;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.Vec3d;
 
 public final class HorizonQACommandUtils {
 
@@ -11,44 +14,37 @@ public final class HorizonQACommandUtils {
 
     private HorizonQACommandUtils() {}
 
-    public static CellRecord findTestContaining(int x, int y, int z, Collection<CellRecord> cells) {
+    public static CellRecord findTestContaining(BlockPos pos, Collection<CellRecord> cells) {
         for (CellRecord cell : cells) {
-            if (x >= cell.minX && x <= cell.maxX
-                && y >= cell.minY
-                && y <= cell.maxY
-                && z >= cell.minZ
-                && z <= cell.maxZ) {
+            if (cell.posInsideCell(pos))
                 return cell;
-            }
         }
         return null;
     }
 
     public static CellRecord findTestAlongLook(EntityPlayer player, Collection<CellRecord> cells) {
-        double ox = player.posX;
-        double oy = player.posY + player.eyeHeight;
-        double oz = player.posZ;
-        Vec3 look = player.getLookVec();
-        double fx = ox + look.xCoord * RAY_LENGTH;
-        double fy = oy + look.yCoord * RAY_LENGTH;
-        double fz = oz + look.zCoord * RAY_LENGTH;
+        Vec3d eye = player.getPositionEyes(1);
+        Vec3d look = player.getLookVec();
+        Vec3d endPos = eye.add(look.x * RAY_LENGTH, look.y * RAY_LENGTH, look.z * RAY_LENGTH);
 
         for (CellRecord cell : cells) {
-            if (rayIntersectsAABB(ox, oy, oz, fx, fy, fz, cell)) {
+            if (rayIntersectsAABB(eye, endPos, cell)) {
                 return cell;
             }
         }
         return null;
     }
 
-    public static CellRecord findNearestTest(int x, int y, int z, Collection<CellRecord> cells) {
+    public static CellRecord findNearestTest(BlockPos pos, Collection<CellRecord> cells) {
         CellRecord nearest = null;
         double nearestDistSq = Double.MAX_VALUE;
         for (CellRecord cell : cells) {
-            double cx = (cell.minX + cell.maxX) * 0.5;
-            double cy = (cell.minY + cell.maxY) * 0.5;
-            double cz = (cell.minZ + cell.maxZ) * 0.5;
-            double dx = x - cx, dy = y - cy, dz = z - cz;
+            BlockPos min = cell.minPos;
+            BlockPos max = cell.maxPos;
+            double cx = (min.getX() + max.getX()) * 0.5;
+            double cy = (min.getY() + max.getY()) * 0.5;
+            double cz = (min.getZ() + max.getZ()) * 0.5;
+            double dx = pos.getX() - cx, dy = pos.getY() - cy, dz = pos.getZ() - cz;
             double distSq = dx * dx + dy * dy + dz * dz;
             if (distSq < nearestDistSq) {
                 nearestDistSq = distSq;
@@ -58,16 +54,17 @@ public final class HorizonQACommandUtils {
         return nearest;
     }
 
-    private static boolean rayIntersectsAABB(double ox, double oy, double oz, double fx, double fy, double fz,
-        CellRecord cell) {
-        double dx = fx - ox, dy = fy - oy, dz = fz - oz;
+    private static boolean rayIntersectsAABB(Vec3d original, Vec3d far, CellRecord cell) {
+        double dx = far.x - original.x, dy = far.y - original.y, dz = far.z - original.z;
         double tmin = 0.0, tmax = 1.0;
 
+        BlockPos min = cell.minPos;
+        BlockPos max = cell.maxPos;
         if (Math.abs(dx) < 1e-9) {
-            if (ox < cell.minX || ox > cell.maxX + 1.0) return false;
+            if (original.x < min.getX() || original.x > max.getX() + 1.0) return false;
         } else {
-            double t1 = (cell.minX - ox) / dx;
-            double t2 = (cell.maxX + 1.0 - ox) / dx;
+            double t1 = (min.getX() - original.x) / dx;
+            double t2 = (max.getX() + 1.0 - original.x) / dx;
             if (t1 > t2) {
                 double tmp = t1;
                 t1 = t2;
@@ -79,10 +76,10 @@ public final class HorizonQACommandUtils {
         }
 
         if (Math.abs(dy) < 1e-9) {
-            if (oy < cell.minY || oy > cell.maxY + 1.0) return false;
+            if (original.y < min.getY() || original.y > max.getY() + 1.0) return false;
         } else {
-            double t1 = (cell.minY - oy) / dy;
-            double t2 = (cell.maxY + 1.0 - oy) / dy;
+            double t1 = (min.getY() - original.y) / dy;
+            double t2 = (max.getY() + 1.0 - original.y) / dy;
             if (t1 > t2) {
                 double tmp = t1;
                 t1 = t2;
@@ -94,10 +91,10 @@ public final class HorizonQACommandUtils {
         }
 
         if (Math.abs(dz) < 1e-9) {
-            if (oz < cell.minZ || oz > cell.maxZ + 1.0) return false;
+            if (original.z < min.getZ() || original.z > max.getZ() + 1.0) return false;
         } else {
-            double t1 = (cell.minZ - oz) / dz;
-            double t2 = (cell.maxZ + 1.0 - oz) / dz;
+            double t1 = (min.getZ() - original.z) / dz;
+            double t2 = (max.getZ() + 1.0 - original.z) / dz;
             if (t1 > t2) {
                 double tmp = t1;
                 t1 = t2;
@@ -111,26 +108,17 @@ public final class HorizonQACommandUtils {
         return true;
     }
 
-    public static final class CellRecord {
+    @Desugar
+    public record CellRecord(String testId, int originX, int originY, int originZ, BlockPos minPos,
+                             BlockPos maxPos) {
 
-        public final String testId;
-
-        public final int originX, originY, originZ;
-
-        public final int minX, minY, minZ, maxX, maxY, maxZ;
-
-        public CellRecord(String testId, int originX, int originY, int originZ, int minX, int minY, int minZ, int maxX,
-            int maxY, int maxZ) {
-            this.testId = testId;
-            this.originX = originX;
-            this.originY = originY;
-            this.originZ = originZ;
-            this.minX = minX;
-            this.minY = minY;
-            this.minZ = minZ;
-            this.maxX = maxX;
-            this.maxY = maxY;
-            this.maxZ = maxZ;
+        public boolean posInsideCell(BlockPos pos) {
+            return pos.getX() >= minPos.getX()
+                && pos.getY() >= minPos.getY()
+                && pos.getZ() >= minPos.getZ()
+                && pos.getX() <= maxPos.getX()
+                && pos.getY() <= maxPos.getY()
+                && pos.getZ() <= maxPos.getZ();
         }
     }
 }

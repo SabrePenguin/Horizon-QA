@@ -46,7 +46,7 @@ public class CommonProxy {
         if (HorizonQAProperties.isCi()) {
             HorizonQAMod.LOG.info(
                 "Void world registered as '{}' (Forge id {}).",
-                VoidWorldProvider.getType(),
+                HorizonQAMod.type.getName(),
                 VoidWorldProvider.VOID_WORLD_ID);
         }
 

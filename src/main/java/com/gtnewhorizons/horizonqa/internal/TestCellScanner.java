@@ -3,14 +3,14 @@ package com.gtnewhorizons.horizonqa.internal;
 import java.util.ArrayList;
 import java.util.List;
 
+import gregtech.api.metatileentity.interfaces.IGregTechTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
 import com.gtnewhorizons.horizonqa.api.TestIsolationViolation;
-
-import cpw.mods.fml.common.Loader;
-import cpw.mods.fml.common.Optional;
-import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import net.minecraftforge.fml.common.Loader;
+import net.minecraftforge.fml.common.Optional;
 
 final class TestCellScanner {
 
@@ -93,7 +93,7 @@ final class TestCellScanner {
                         && y <= tmplMaxY
                         && z >= tmplMinZ
                         && z <= tmplMaxZ) continue;
-                    if (!world.isAirBlock(x, y, z)) {
+                    if (!world.isAirBlock(new BlockPos(x, y, z))) {
                         result.add("(" + x + ", " + y + ", " + z + ")");
                     }
                 }
@@ -122,7 +122,7 @@ final class TestCellScanner {
                         && y <= cellMaxY
                         && z >= cellMinZ
                         && z <= cellMaxZ) continue;
-                    TileEntity te = world.getTileEntity(x, y, z);
+                    TileEntity te = world.getTileEntity(new BlockPos(x, y, z));
                     if (te instanceof IGregTechTileEntity) {
                         result.add("(" + x + ", " + y + ", " + z + ")");
                     }

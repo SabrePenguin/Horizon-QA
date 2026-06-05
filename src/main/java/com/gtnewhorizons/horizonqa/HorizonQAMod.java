@@ -1,6 +1,8 @@
 package com.gtnewhorizons.horizonqa;
 
 import com.gtnewhorizons.horizonqa.world.VoidWorldProvider;
+import net.minecraft.world.DimensionType;
+import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
@@ -23,6 +25,10 @@ public class HorizonQAMod {
     public static final String NAME = "Horizon QA";
     public static final Logger LOG = LogManager.getLogger(MODID);
 
+
+    public static final int VOID_WORLD_ID = 327;
+    public static DimensionType type;
+
     @Mod.Instance(HorizonQAMod.MODID)
     public static HorizonQAMod instance;
 
@@ -35,7 +41,8 @@ public class HorizonQAMod {
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-        VoidWorldProvider.setType();
+        type = DimensionType.register("gtnhvvoid", "void", VOID_WORLD_ID, VoidWorldProvider.class, false);
+        DimensionManager.registerDimension(VOID_WORLD_ID, type);
         proxy.preInit(event);
     }
 

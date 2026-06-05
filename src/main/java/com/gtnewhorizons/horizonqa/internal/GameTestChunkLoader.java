@@ -3,7 +3,8 @@ package com.gtnewhorizons.horizonqa.internal;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.world.ChunkCoordIntPair;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.ForgeChunkManager;
@@ -22,21 +23,25 @@ public final class GameTestChunkLoader implements ForgeChunkManager.OrderedLoadi
     private final List<Ticket> tickets = new ArrayList<>();
 
     public void forceChunks(World world, int x1, int y1, int z1, int x2, int y2, int z2) {
+        forceChunks(world, new BlockPos(x1, y1, z1), new BlockPos(x2, y2, z2));
+    }
+
+    public void forceChunks(World world, BlockPos pos1, BlockPos pos2) {
         try {
-            forceChunksStrict(world, x1, y1, z1, x2, y2, z2);
+            forceChunksStrict(world, pos1, pos2);
         } catch (TemplateException e) {
             LOG.warn(e.getMessage());
         }
     }
 
-    public void forceChunksStrict(World world, int x1, int y1, int z1, int x2, int y2, int z2)
+    public void forceChunksStrict(World world, BlockPos pos1, BlockPos pos2)
         throws TemplateException {
-        String description = "bounding box (" + x1 + "," + y1 + "," + z1 + ") -> (" + x2 + "," + y2 + "," + z2 + ")";
+        String description = "bounding box " + pos1 + " -> " + pos2 ;
 
-        int chunkX1 = Math.min(x1, x2) >> 4;
-        int chunkZ1 = Math.min(z1, z2) >> 4;
-        int chunkX2 = Math.max(x1, x2) >> 4;
-        int chunkZ2 = Math.max(z1, z2) >> 4;
+        int chunkX1 = Math.min(pos1.getX(), pos2.getX()) >> 4;
+        int chunkZ1 = Math.min(pos1.getZ(), pos2.getZ()) >> 4;
+        int chunkX2 = Math.max(pos1.getX(), pos2.getX()) >> 4;
+        int chunkZ2 = Math.max(pos2.getZ(), pos2.getZ()) >> 4;
 
         ChunkProviderServer cps = world.getChunkProvider() instanceof ChunkProviderServer
             ? (ChunkProviderServer) world.getChunkProvider()

@@ -26,36 +26,35 @@ public abstract class MixinDedicatedServer {
     private boolean canSpawnStructures;
 
     @Redirect(
-        method = "startServer",
+        method = "init",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/world/WorldType;parseWorldType(Ljava/lang/String;)Lnet/minecraft/world/WorldType;"))
-    private static WorldType gametest$forceLevelTypeProperty(String name) {
+            target = "Lnet/minecraft/world/WorldType;byName(Ljava/lang/String;)Lnet/minecraft/world/WorldType;"))
+    private WorldType gametest$forceLevelTypeProperty(String name) {
         if (HorizonQAProperties.isCi()) {
             return GameTestWorldType.INSTANCE;
         }
-        return WorldType.parseWorldType(name);
+        return WorldType.byName(name);
     }
 
     @Redirect(
-        method = "startServer",
+        method = "init",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/network/NetworkSystem;addLanEndpoint(Ljava/net/InetAddress;I)V"))
+            target = "Lnet/minecraft/network/NetworkSystem;addEndpoint(Ljava/net/InetAddress;I)V"))
     private void gametest$skipBind(NetworkSystem net, InetAddress address, int port) throws IOException {
         if (HorizonQAProperties.isCi()) {
             HorizonQAMod.LOG.info("GameTest: skipping dedicated server network bind (would have used port {})", port);
             return;
         }
-        net.addLanEndpoint(address, port);
+        net.addEndpoint(address, port);
     }
 
     @Inject(
-        method = "startServer",
+        method = "init",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/server/dedicated/DedicatedServer;loadAllWorlds(Ljava/lang/String;Ljava/lang/String;JLnet/minecraft/world/WorldType;Ljava/lang/String;)V",
-            shift = At.Shift.BEFORE))
+            target = "Lnet/minecraft/server/dedicated/DedicatedServer;loadAllWorlds(Ljava/lang/String;Ljava/lang/String;JLnet/minecraft/world/WorldType;Ljava/lang/String;)V"))
     private void gametest$tuneDedicatedFlags(CallbackInfoReturnable<Boolean> cir) {
         if (!HorizonQAProperties.isCi()) {
             return;

@@ -20,7 +20,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
 public class VoidChunkGenerator implements IChunkGenerator {
 
     private final World worldObj;
-    private final Chunk[] chunkCache = new Chunk[256];
 
     public VoidChunkGenerator(World world) {
         this.worldObj = world;

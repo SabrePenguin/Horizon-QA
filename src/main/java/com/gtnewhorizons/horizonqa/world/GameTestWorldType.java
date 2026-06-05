@@ -1,10 +1,16 @@
 package com.gtnewhorizons.horizonqa.world;
 
+import mcp.MethodsReturnNonnullByDefault;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldType;
-import net.minecraft.world.biome.WorldChunkManager;
-import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraft.world.gen.IChunkGenerator;
 
+import javax.annotation.ParametersAreNonnullByDefault;
+
+@ParametersAreNonnullByDefault
+@MethodsReturnNonnullByDefault
 public class GameTestWorldType extends WorldType {
 
     public static final String TYPE_NAME = "gtnhvvoid";
@@ -16,17 +22,12 @@ public class GameTestWorldType extends WorldType {
     }
 
     @Override
-    public WorldChunkManager getChunkManager(World world) {
-        return new VoidWorldChunkManager(world);
+    public IChunkGenerator getChunkGenerator(World world, String generatorOptions) {
+        return new VoidChunkGenerator(world);
     }
 
     @Override
-    public IChunkProvider getChunkGenerator(World world, String generatorOptions) {
-        return new VoidChunkProvider(world);
-    }
-
-    @Override
-    public int getSpawnFuzz() {
+    public int getSpawnFuzz(WorldServer world, MinecraftServer server) {
         return 1;
     }
 
