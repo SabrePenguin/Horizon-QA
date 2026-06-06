@@ -201,11 +201,11 @@ public class InteractiveTestSession {
             originY,
             originZ,
             new BlockPos(cellMinX,
-            cellMinY,
-            cellMinZ),
+                cellMinY,
+                cellMinZ),
             new BlockPos(cellMaxX,
-            cellMaxY,
-            cellMaxZ));
+                cellMaxY,
+                cellMaxZ));
     }
 
     private static boolean forcePlannedArea(WorldServer world, List<PlannedTest> planned) {

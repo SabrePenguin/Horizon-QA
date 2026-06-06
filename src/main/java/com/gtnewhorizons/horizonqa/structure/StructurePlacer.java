@@ -1,8 +1,10 @@
 package com.gtnewhorizons.horizonqa.structure;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.ChunkProviderServer;
@@ -100,73 +102,35 @@ public final class StructurePlacer {
                     if (block == null) {
                         continue;
                     }
-                    int wx = originX + rotatedLocalX(x, z, sizeX, sizeZ, rotationSteps);
-                    int wy = originY + y;
-                    int wz = originZ + rotatedLocalZ(x, z, sizeX, sizeZ, rotationSteps);
-                    try {
-                        world.setBlock(wx, wy, wz, block, entry.meta, notifyClients);
-                    } catch (RuntimeException e) {
-                        throw new TemplateException(
-                            "Failed to place block '" + entry.name
-                                + "' from template '"
-                                + templateName
-                                + "' at ("
-                                + wx
-                                + ","
-                                + wy
-                                + ","
-                                + wz
-                                + "): "
-                                + errorMessage(e),
-                            e);
-                    }
+                    BlockPos pos = new BlockPos(originX + rotatedLocalX(x, z, sizeX, sizeZ, rotationSteps), originY + y, originZ + rotatedLocalZ(x, z, sizeX, sizeZ, rotationSteps));
+                    IBlockState state = block.getStateFromMeta(entry.meta);
+                    world.setBlockState(pos, state);
 
                     NBTTagCompound teNbt = template.getTileEntity(x, y, z);
-                    if (teNbt != null || block.hasTileEntity(entry.meta)) {
-                        TileEntity te = ensureTileEntity(world, wx, wy, wz, block, entry, strict);
-                        if (te == null) {
-                            if (teNbt != null) {
-                                handleTemplateError(
-                                    strict,
-                                    "No TileEntity at (" + wx
-                                        + ","
-                                        + wy
-                                        + ","
-                                        + wz
-                                        + ") after placing block '"
-                                        + entry.name
-                                        + "' from template '"
-                                        + templateName
-                                        + "'; cannot inject tile entity NBT",
-                                    null);
-                            }
-                        } else if (teNbt != null) {
-                            NBTTagCompound patchedNbt = (NBTTagCompound) teNbt.copy();
-                            patchedNbt.setInteger("x", wx);
-                            patchedNbt.setInteger("y", wy);
-                            patchedNbt.setInteger("z", wz);
-                            rotator.rotate(patchedNbt, rotationSteps);
-
-                            try {
-                                te.readFromNBT(patchedNbt);
-                                world.markBlockForUpdate(wx, wy, wz);
-                            } catch (RuntimeException e) {
-                                throw new TemplateException(
-                                    "Failed to inject tile entity NBT for template '" + templateName
-                                        + "' at ("
-                                        + wx
-                                        + ","
-                                        + wy
-                                        + ","
-                                        + wz
-                                        + "): "
-                                        + errorMessage(e),
-                                    e);
-                            }
-                        }
+                    if (teNbt == null && !block.hasTileEntity(state)) {
+                        continue;
                     }
 
-                    rotatePlacedBlock(block, world, wx, wy, wz, entry.name, rotationSteps, strict);
+                    TileEntity te = ensureTileEntity(world, pos, state);
+                    if (te == null) {
+                        if (teNbt != null) {
+                            LOG.warn(
+                                "StructurePlacer: no TileEntity at ({}) after block placement "
+                                    + "— skipping NBT injection",
+                                pos);
+                        }
+                        continue;
+                    }
+
+                    if (teNbt != null) {
+                        NBTTagCompound patchedNbt = teNbt.copy();
+                        patchedNbt.setInteger("x", pos.getX());
+                        patchedNbt.setInteger("y", pos.getY());
+                        patchedNbt.setInteger("z", pos.getZ());
+
+                        te.readFromNBT(patchedNbt);
+                        world.notifyBlockUpdate(pos, world.getBlockState(pos), world.getBlockState(pos), 3);
+                    }
                 }
             }
         }
@@ -264,68 +228,39 @@ public final class StructurePlacer {
         } else {
             for (int cx = chunkMinX; cx <= chunkMaxX; cx++) {
                 for (int cz = chunkMinZ; cz <= chunkMaxZ; cz++) {
-                    world.getChunkFromChunkCoords(cx, cz);
+                    world.getChunk(cx, cz);
                 }
             }
         }
     }
 
-    private static TileEntity ensureTileEntity(WorldServer world, int wx, int wy, int wz, Block block,
-        HybridStructureTemplate.PaletteEntry entry, boolean strict) throws TemplateException {
-        if (!block.hasTileEntity(entry.meta)) {
+    private static TileEntity ensureTileEntity(WorldServer world, BlockPos pos, IBlockState state) {
+        if (!state.getBlock().hasTileEntity(state)) {
             return null;
         }
 
-        TileEntity te = getTileEntity(world, wx, wy, wz, entry, strict);
+        TileEntity te = world.getTileEntity(pos);
         if (te != null) {
             return te;
         }
 
-        te = createTileEntity(world, block, entry, wx, wy, wz, strict);
+        te = state.getBlock().createTileEntity(world, state);
         if (te == null) {
+            LOG.warn(
+                "StructurePlacer: block {} (meta {}) returned null from createTileEntity at ({})",
+                RegistryStringResolver.getName(state.getBlock()),
+                state.getBlock().getMetaFromState(state),
+                pos);
             return null;
         }
 
-        try {
-            world.setTileEntity(wx, wy, wz, te);
-        } catch (RuntimeException e) {
-            handleTemplateError(
-                strict,
-                "Failed to attach TileEntity for block '" + entry.name
-                    + "' at ("
-                    + wx
-                    + ","
-                    + wy
-                    + ","
-                    + wz
-                    + ") with World#setTileEntity: "
-                    + errorMessage(e),
-                e);
-            return null;
-        }
-        te = getTileEntity(world, wx, wy, wz, entry, strict);
+        world.setTileEntity(pos, te);
+        te = world.getTileEntity(pos);
         if (te == null) {
-            Chunk chunk = getChunk(world, wx, wz, entry, strict);
-            TileEntity fallbackTe = createTileEntity(world, block, entry, wx, wy, wz, strict);
-            if (chunk != null && fallbackTe != null) {
-                try {
-                    chunk.func_150812_a(wx & 15, wy, wz & 15, fallbackTe);
-                } catch (RuntimeException e) {
-                    handleTemplateError(
-                        strict,
-                        "Failed to attach TileEntity for block '" + entry.name
-                            + "' at ("
-                            + wx
-                            + ","
-                            + wy
-                            + ","
-                            + wz
-                            + ") with Chunk#func_150812_a: "
-                            + errorMessage(e),
-                        e);
-                    return null;
-                }
-                te = getTileEntity(world, wx, wy, wz, entry, strict);
+            Chunk chunk = world.getChunk(pos.getX() >> 4, pos.getZ() >> 4);
+            if (chunk != null) {
+                chunk.addTileEntity(pos, state.getBlock().createTileEntity(world, state));
+                te = world.getTileEntity(pos);
             }
         }
         if (te == null) {

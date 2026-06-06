@@ -428,21 +428,18 @@ public class HorizonQACommand extends CommandBase {
             return;
         }
 
-        int x1 = nbt.getInteger(ItemHorizonWand.TAG_POS1_X);
-        int y1 = nbt.getInteger(ItemHorizonWand.TAG_POS1_Y);
-        int z1 = nbt.getInteger(ItemHorizonWand.TAG_POS1_Z);
-        int x2 = nbt.getInteger(ItemHorizonWand.TAG_POS2_X);
-        int y2 = nbt.getInteger(ItemHorizonWand.TAG_POS2_Y);
-        int z2 = nbt.getInteger(ItemHorizonWand.TAG_POS2_Z);
+        BlockPos pos1 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS1));
+        BlockPos pos2 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS2));
 
-        int minX = Math.min(x1, x2), minY = Math.min(y1, y2), minZ = Math.min(z1, z2);
-        int maxX = Math.max(x1, x2), maxY = Math.max(y1, y2), maxZ = Math.max(z1, z2);
+        // TODO: BlockPos sort
+        int minX = Math.min(pos1.getX(), pos2.getX()), minY = Math.min(pos1.getY(), pos2.getY()), minZ = Math.min(pos1.getZ(), pos2.getZ());
+        int maxX = Math.max(pos1.getX(), pos2.getX()), maxY = Math.max(pos1.getY(), pos2.getY()), maxZ = Math.max(pos1.getZ(), pos2.getZ());
 
         WorldServer world = (WorldServer) player.world;
         File outputDir = server.getFile("horizonqastructures");
 
         try {
-            StructureExporter.export(world, minX, minY, minZ, maxX, maxY, maxZ, outputDir, name);
+            StructureExporter.export(world, new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ), outputDir, name);
             sender.sendMessage(
                 new TextComponentString(
                     TextFormatting.GREEN + "Exported '"

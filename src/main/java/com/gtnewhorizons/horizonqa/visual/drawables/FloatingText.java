@@ -5,8 +5,11 @@ import java.util.List;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.BufferBuilder;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.Entity;
 
 import org.lwjgl.opengl.GL11;
@@ -35,7 +38,7 @@ public final class FloatingText {
         float partialTicks) {
         if (lines == null || lines.length == 0) return;
         Minecraft mc = Minecraft.getMinecraft();
-        Entity view = mc.renderViewEntity != null ? mc.renderViewEntity : mc.thePlayer;
+        Entity view = mc.getRenderViewEntity() != null ? mc.getRenderViewEntity() : mc.player;
         if (view == null) return;
         double camX = view.lastTickPosX + (view.posX - view.lastTickPosX) * partialTicks;
         double camY = view.lastTickPosY + (view.posY - view.lastTickPosY) * partialTicks;
@@ -59,45 +62,44 @@ public final class FloatingText {
             if (w > maxW) maxW = w;
         }
         int totalH = lines.length * (fr.FONT_HEIGHT + 1) - 1;
+        RenderManager manager = mc.getRenderManager();
 
-        GL11.glPushMatrix();
-        GL11.glTranslated(wx, wy, wz);
-        GL11.glRotatef(-RenderManager.instance.playerViewY, 0f, 1f, 0f);
-        GL11.glRotatef(RenderManager.instance.playerViewX, 1f, 0f, 0f);
-        GL11.glScalef(-s, -s, s);
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(dx, dy, dz);
+        GlStateManager.rotate(-manager.playerViewY, 0f, 1f, 0f);
+        GlStateManager.rotate(manager.playerViewX, 1f, 0f, 0f);
+        GlStateManager.scale(-s, -s, s);
 
-        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT);
-        GL11.glDisable(GL11.GL_DEPTH_TEST);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GlStateManager.disableLighting();
+        GlStateManager.disableDepth();
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
 
         int bx0 = -maxW / 2 - PAD;
         int bx1 = maxW / 2 + PAD;
         int by0 = -PAD;
         int by1 = totalH + PAD;
 
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        Tessellator tess = Tessellator.instance;
-        tess.startDrawingQuads();
-        tess.setColorRGBA_I(0x000000, 96);
-        tess.addVertex(bx0, by1, 0.0);
-        tess.setColorRGBA_I(0x000000, 96);
-        tess.addVertex(bx1, by1, 0.0);
-        tess.setColorRGBA_I(0x000000, 96);
-        tess.addVertex(bx1, by0, 0.0);
-        tess.setColorRGBA_I(0x000000, 96);
-        tess.addVertex(bx0, by0, 0.0);
+        GlStateManager.disableTexture2D();
+        Tessellator tess = Tessellator.getInstance();
+        BufferBuilder buffer = tess.getBuffer();
+        buffer.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION_COLOR);
+        buffer.pos(bx0, by1, 0).color(0, 0, 0, 96).endVertex();
+        buffer.pos(bx1, by1, 0).color(0, 0, 0, 96).endVertex();
+        buffer.pos(bx1, by0, 0).color(0, 0, 0, 96).endVertex();
+        buffer.pos(bx0, by0, 0).color(0, 0, 0, 96).endVertex();
         tess.draw();
 
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GlStateManager.enableTexture2D();
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             int tw = fr.getStringWidth(line);
             fr.drawStringWithShadow(line, -tw / 2, i * (fr.FONT_HEIGHT + 1), 0xFFFFFF);
         }
 
-        GL11.glPopAttrib();
-        GL11.glPopMatrix();
+        GlStateManager.enableDepth();
+        GlStateManager.disableBlend();
+        GlStateManager.popMatrix();
     }
 
     public static void render(double wx, double wy, double wz, String[] lines, float partialTicks) {

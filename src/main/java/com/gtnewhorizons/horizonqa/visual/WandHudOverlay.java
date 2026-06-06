@@ -6,6 +6,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 
@@ -40,19 +41,20 @@ public final class WandHudOverlay {
         String modeStr = surfaceMode ? I18n.format("horizonqa.wand.hud.mode.surface")
             : I18n.format("horizonqa.wand.hud.mode.block");
         fr.drawStringWithShadow(
-            String.format(I18n.format("horizonqa.wand.hud.mode"), modeStr),
+            I18n.format("horizonqa.wand.hud.mode", modeStr),
             x,
             y,
             0xFFFFFF);
         y += lineH;
 
         if (pos1Set) {
-            String coords = nbt.getInteger(ItemHorizonWand.TAG_POS1_X) + ", "
-                + nbt.getInteger(ItemHorizonWand.TAG_POS1_Y)
+            BlockPos pos1 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS1));
+            String coords = pos1.getX() + ", "
+                + pos1.getY()
                 + ", "
-                + nbt.getInteger(ItemHorizonWand.TAG_POS1_Z);
+                + pos1.getZ();
             fr.drawStringWithShadow(
-                String.format(I18n.format("horizonqa.wand.hud.pos1"), coords),
+                I18n.format("horizonqa.wand.hud.pos1", coords),
                 x,
                 y,
                 0xFFFFFF);
@@ -62,12 +64,13 @@ public final class WandHudOverlay {
         y += lineH;
 
         if (pos2Set) {
-            String coords = nbt.getInteger(ItemHorizonWand.TAG_POS2_X) + ", "
-                + nbt.getInteger(ItemHorizonWand.TAG_POS2_Y)
+            BlockPos pos2 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS2));
+            String coords = pos2.getX() + ", "
+                + pos2.getY()
                 + ", "
-                + nbt.getInteger(ItemHorizonWand.TAG_POS2_Z);
+                + pos2.getZ();
             fr.drawStringWithShadow(
-                String.format(I18n.format("horizonqa.wand.hud.pos2"), coords),
+                I18n.format("horizonqa.wand.hud.pos2", coords),
                 x,
                 y,
                 0xFFFFFF);
@@ -79,14 +82,16 @@ public final class WandHudOverlay {
         y += lineH;
 
         if (pos1Set && pos2Set) {
-            int dx = Math.abs(nbt.getInteger(ItemHorizonWand.TAG_POS2_X) - nbt.getInteger(ItemHorizonWand.TAG_POS1_X))
+            BlockPos pos1 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS1));
+            BlockPos pos2 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS2));
+            int dx = Math.abs(pos2.getX() - pos1.getX())
                 + 1;
-            int dy = Math.abs(nbt.getInteger(ItemHorizonWand.TAG_POS2_Y) - nbt.getInteger(ItemHorizonWand.TAG_POS1_Y))
+            int dy = Math.abs(pos2.getY() - pos1.getY())
                 + 1;
-            int dz = Math.abs(nbt.getInteger(ItemHorizonWand.TAG_POS2_Z) - nbt.getInteger(ItemHorizonWand.TAG_POS1_Z))
+            int dz = Math.abs(pos2.getZ() - pos1.getZ())
                 + 1;
             fr.drawStringWithShadow(
-                String.format(I18n.format("horizonqa.wand.hud.size"), dx, dy, dz, dx * dy * dz),
+                I18n.format("horizonqa.wand.hud.size", dx, dy, dz, dx * dy * dz),
                 x,
                 y,
                 0xFFFFFF);

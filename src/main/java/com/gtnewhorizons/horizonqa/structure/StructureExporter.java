@@ -11,10 +11,12 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
 import org.apache.logging.log4j.LogManager;
@@ -30,12 +32,12 @@ public final class StructureExporter {
 
     private StructureExporter() {}
 
-    public static void export(WorldServer world, int x1, int y1, int z1, int x2, int y2, int z2, File outputDir,
-        String name) throws IOException {
+    public static void export(WorldServer world, BlockPos pos1, BlockPos pos2, File outputDir,
+                              String name) throws IOException {
 
-        int sizeX = x2 - x1 + 1;
-        int sizeY = y2 - y1 + 1;
-        int sizeZ = z2 - z1 + 1;
+        int sizeX = pos1.getX() - pos2.getX() + 1;
+        int sizeY = pos1.getY() - pos2.getY() + 1;
+        int sizeZ = pos1.getZ() - pos2.getZ() + 1;
 
         String[][][] blockNames = new String[sizeX][sizeY][sizeZ];
         int[][][] blockMetas = new int[sizeX][sizeY][sizeZ];
@@ -43,15 +45,14 @@ public final class StructureExporter {
 
         TreeMap<String, String> sortedUniqueBlocks = new TreeMap<>();
 
+        BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
         for (int x = 0; x < sizeX; x++) {
             for (int y = 0; y < sizeY; y++) {
                 for (int z = 0; z < sizeZ; z++) {
-                    int wx = x1 + x;
-                    int wy = y1 + y;
-                    int wz = z1 + z;
-
-                    Block block = world.getBlock(wx, wy, wz);
-                    int meta = world.getBlockMetadata(wx, wy, wz);
+                    mutableBlockPos.setPos(pos1.getX() + x, pos1.getY() + y, pos1.getZ() + z);
+                    IBlockState state = world.getBlockState(mutableBlockPos);
+                    Block block = state.getBlock();
+                    int meta = block.getMetaFromState(state);
                     String regName = RegistryStringResolver.getName(block);
 
                     if (regName == null || regName.equals("minecraft:air")) {
@@ -66,7 +67,7 @@ public final class StructureExporter {
                             sortedUniqueBlocks.put(palKey, resolveLabel(block, meta));
                         }
 
-                        TileEntity te = world.getTileEntity(wx, wy, wz);
+                        TileEntity te = world.getTileEntity(mutableBlockPos);
                         if (te != null) {
                             NBTTagCompound teNbt = new NBTTagCompound();
                             te.writeToNBT(teNbt);

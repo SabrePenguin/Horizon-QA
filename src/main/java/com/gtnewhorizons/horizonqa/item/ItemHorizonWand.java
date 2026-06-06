@@ -5,11 +5,11 @@ import java.util.List;
 import com.gtnewhorizons.horizonqa.Tags;
 import mcp.MethodsReturnNonnullByDefault;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -18,7 +18,6 @@ import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.text.TextComponentString;
@@ -34,16 +33,8 @@ import javax.annotation.ParametersAreNonnullByDefault;
 @MethodsReturnNonnullByDefault
 public class ItemHorizonWand extends Item {
 
-    public static ItemHorizonWand INSTANCE;
-
-    public static final String TAG_POS1_X = "pos1X";
-    public static final String TAG_POS1_Y = "pos1Y";
-    public static final String TAG_POS1_Z = "pos1Z";
     public static final String TAG_POS1 = "pos1";
     public static final String TAG_POS1_SET = "pos1Set";
-    public static final String TAG_POS2_X = "pos2X";
-    public static final String TAG_POS2_Y = "pos2Y";
-    public static final String TAG_POS2_Z = "pos2Z";
     public static final String TAG_POS2 = "pos2";
     public static final String TAG_POS2_SET = "pos2Set";
     public static final String TAG_PENDING = "pending";
@@ -81,9 +72,16 @@ public class ItemHorizonWand extends Item {
         ItemStack heldItem = player.getHeldItem(hand);
         if (!world.isRemote) {
             RayTraceResult target = rayTrace(world, player, false);
-            if (target == null || target.typeOfHit != RayTraceResult.Type.BLOCK)
-                return new ActionResult<>(EnumActionResult.PASS, heldItem);
-            BlockPos result = target.getBlockPos().offset(target.sideHit);
+            BlockPos result;
+            if (target != null && target.typeOfHit == RayTraceResult.Type.BLOCK) {
+                result = target.getBlockPos().offset(target.sideHit);
+            } else {
+                double reach = player.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
+                Vec3d start = player.getPositionEyes(1);
+                Vec3d look = player.getLook(1);
+                Vec3d end = start.add(look.scale(reach));
+                result = new BlockPos(end);
+            }
             NBTTagCompound nbt = getOrCreateNBT(heldItem);
             if (nbt.getBoolean(TAG_PENDING)) {
                 setPos2(heldItem, player, result);
@@ -92,55 +90,6 @@ public class ItemHorizonWand extends Item {
             }
         }
         return ActionResult.newResult(EnumActionResult.SUCCESS, heldItem);
-    }
-
-    public static int[] getTargetedPosition(EntityPlayer player) {
-        return getTargetedPosition(player, true);
-    }
-
-    public static int[] getTargetedPositionFromHit(int x, int y, int z, int side, boolean sneaking) {
-        if (sneaking && side >= 0 && side < 6) {
-            return new int[] { x + FACE_NORMALS[side][0], y + FACE_NORMALS[side][1], z + FACE_NORMALS[side][2] };
-        }
-        return new int[] { x, y, z };
-    }
-
-    private static int[] getTargetedPosition(EntityPlayer player, boolean includeSurfaceOffset) {
-        double dist = getBlockReachDistance(player);
-
-        Vec3d start = new Vec3d(player.posX, player.posY + player.getEyeHeight(), player.posZ);
-        Vec3d look = player.getLookVec();
-        Vec3d end = new Vec3d(
-            start.xCoord + look.xCoord * dist,
-            start.yCoord + look.yCoord * dist,
-            start.zCoord + look.zCoord * dist);
-
-        MovingObjectPosition hit = player.worldObj.rayTraceBlocks(start, end);
-
-        if (hit != null && hit.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            int tx = hit.blockX;
-            int ty = hit.blockY;
-            int tz = hit.blockZ;
-            if (includeSurfaceOffset && player.isSneaking() && hit.sideHit >= 0 && hit.sideHit < 6) {
-                tx += FACE_NORMALS[hit.sideHit][0];
-                ty += FACE_NORMALS[hit.sideHit][1];
-                tz += FACE_NORMALS[hit.sideHit][2];
-            }
-            return new int[] { tx, ty, tz };
-        } else {
-            return new int[] { MathHelper.floor(end.xCoord), MathHelper.floor(end.yCoord),
-                MathHelper.floor(end.zCoord) };
-        }
-    }
-
-    private static double getBlockReachDistance(EntityPlayer player) {
-        if (player.world.isRemote) {
-            return getClientBlockReachDistance();
-        }
-        if (player instanceof EntityPlayerMP) {
-            return ((EntityPlayerMP) player).theItemInWorldManager.getBlockReachDistance();
-        }
-        return 5.0;
     }
 
     @SideOnly(Side.CLIENT)
@@ -156,7 +105,7 @@ public class ItemHorizonWand extends Item {
         nbt.setBoolean(TAG_PENDING, true);
         player.sendMessage(
             new TextComponentString(
-                TextFormatting.GREEN + String.format(I18n.format("horizonqa.wand.pos1.set"), pos.getX(), pos.getY(), pos.getZ())
+                TextFormatting.GREEN + I18n.format("horizonqa.wand.pos1.set", pos.getX(), pos.getY(), pos.getZ())
             )
         );
     }
@@ -168,7 +117,7 @@ public class ItemHorizonWand extends Item {
         nbt.setBoolean(TAG_PENDING, false);
         player.sendMessage(
             new TextComponentString(
-                TextFormatting.GREEN + String.format(I18n.format("horizonqa.wand.pos2.set"), pos.getX(), pos.getY(), pos.getZ())
+                TextFormatting.GREEN + I18n.format("horizonqa.wand.pos2.set", pos.getX(), pos.getY(), pos.getZ())
             )
         );
     }
@@ -211,7 +160,7 @@ public class ItemHorizonWand extends Item {
             int dx = Math.abs(pos2.getX() - pos1.getX()) + 1;
             int dy = Math.abs(pos2.getY() - pos1.getY()) + 1;
             int dz = Math.abs(pos2.getZ() - pos1.getZ()) + 1;
-            tooltip.add(String.format(I18n.format("horizonqa.wand.tooltip.size"), dx, dy, dz));
+            tooltip.add(I18n.format("horizonqa.wand.tooltip.size", dx, dy, dz));
         }
 
         tooltip.add(I18n.format("horizonqa.wand.tooltip.surface_mode"));
@@ -223,5 +172,18 @@ public class ItemHorizonWand extends Item {
             stack.setTagCompound(new NBTTagCompound());
         }
         return stack.getTagCompound();
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    public static ItemStack getWandItemStack(EntityPlayerSP player) {
+        ItemStack hand = player.getHeldItemMainhand();
+        if (!hand.isEmpty() && hand.getItem() == ItemRegistration.wand) {
+            return hand;
+        }
+        hand = player.getHeldItemOffhand();
+        if (!hand.isEmpty() && hand.getItem() == ItemRegistration.wand) {
+            return hand;
+        }
+        return ItemStack.EMPTY;
     }
 }

@@ -1,7 +1,10 @@
 package com.gtnewhorizons.horizonqa.visual.drawables;
 
+import net.minecraft.client.renderer.BufferBuilder;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
 
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import org.lwjgl.opengl.GL11;
 
 public final class GhostBlockDiff {
@@ -31,41 +34,48 @@ public final class GhostBlockDiff {
         double y1 = y + 1.0 + INSET;
         double z1 = z + 1.0 + INSET;
 
-        GL11.glPushAttrib(
-            GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_POLYGON_BIT);
-        GL11.glEnable(GL11.GL_DEPTH_TEST);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glDisable(GL11.GL_CULL_FACE);
-        GL11.glDepthMask(false);
-        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(-2.0f, -16.0f);
+        GlStateManager.pushMatrix();
+        GlStateManager.enableDepth();
+        GlStateManager.depthMask(false);
+        GlStateManager.disableTexture2D();
+        GlStateManager.disableCull();
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+        GlStateManager.enablePolygonOffset();
+        GlStateManager.doPolygonOffset(-2, -16);
 
-        Tessellator tess = Tessellator.instance;
-        tess.startDrawingQuads();
-        face(tess, x1, y0, z1, x1, y1, z1, x1, y1, z0, x1, y0, z0);
-        face(tess, x0, y0, z0, x0, y1, z0, x0, y1, z1, x0, y0, z1);
-        face(tess, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0);
-        face(tess, x0, y0, z1, x0, y0, z0, x1, y0, z0, x1, y0, z1);
-        face(tess, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
-        face(tess, x1, y0, z0, x0, y0, z0, x0, y1, z0, x1, y1, z0);
+        Tessellator tess = Tessellator.getInstance();
+        BufferBuilder builder = tess.getBuffer();
+        builder.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION_COLOR);
+        face(builder, x1, y0, z1, x1, y1, z1, x1, y1, z0, x1, y0, z0);
+        face(builder, x0, y0, z0, x0, y1, z0, x0, y1, z1, x0, y0, z1);
+        face(builder, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0);
+        face(builder, x0, y0, z1, x0, y0, z0, x1, y0, z0, x1, y0, z1);
+        face(builder, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
+        face(builder, x1, y0, z0, x0, y0, z0, x0, y1, z0, x1, y1, z0);
         tess.draw();
-        GL11.glPopAttrib();
+
+        GlStateManager.disablePolygonOffset();
+        GlStateManager.depthMask(true);
+        GlStateManager.enableCull();
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        GlStateManager.popMatrix();
 
         if (label != null && !label.isEmpty()) {
             FloatingText.render(x + 0.5, y + 1.25, z + 0.5, new String[] { label }, 0.5f, partialTicks);
         }
     }
 
-    private void face(Tessellator tess, double ax, double ay, double az, double bx, double by, double bz, double cx,
+    private void face(BufferBuilder builder, double ax, double ay, double az, double bx, double by, double bz, double cx,
         double cy, double cz, double dx, double dy, double dz) {
-        tess.setColorRGBA_F(r, g, b, ALPHA);
-        tess.addVertex(ax, ay, az);
-        tess.setColorRGBA_F(r, g, b, ALPHA);
-        tess.addVertex(bx, by, bz);
-        tess.setColorRGBA_F(r, g, b, ALPHA);
-        tess.addVertex(cx, cy, cz);
-        tess.setColorRGBA_F(r, g, b, ALPHA);
-        tess.addVertex(dx, dy, dz);
+        int ri = (int) r * 255;
+        int gi = (int) g * 255;
+        int bi = (int) b * 255;
+        int ai = (int) ALPHA * 255;
+        builder.pos(ax, ay, az).color(ri, gi, bi ,ai).endVertex();
+        builder.pos(bx, by, bz).color(ri, gi, bi ,ai).endVertex();
+        builder.pos(cx, cy, cz).color(ri, gi, bi ,ai).endVertex();
+        builder.pos(cx, dy, dz).color(ri, gi, bi ,ai).endVertex();
     }
 }

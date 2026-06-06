@@ -1,17 +1,23 @@
 package com.gtnewhorizons.horizonqa.visual;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.BufferBuilder;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.EnumHand;
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.Vec3d;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.opengl.GL11;
 
-import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizons.horizonqa.item.ItemHorizonWand;
 
 
@@ -75,127 +81,105 @@ public final class SelectionOutlineClientRenderer {
          }
         if (viewer == null || mc.world == null) return;
 
-        ItemStack held = mc.player.getHeldItem(EnumHand.MAIN_HAND);
-        if (held.isEmpty() || !(held.getItem() instanceof ItemHorizonWand)) return;
+        ItemStack held = ItemHorizonWand.getWandItemStack(mc.player);
+        if (held.isEmpty()) return;
 
         NBTTagCompound nbt = held.getTagCompound();
         boolean pos1Set = nbt != null && nbt.getBoolean(ItemHorizonWand.TAG_POS1_SET);
         boolean pending = nbt != null && nbt.getBoolean(ItemHorizonWand.TAG_PENDING);
         boolean pos2Set = nbt != null && nbt.getBoolean(ItemHorizonWand.TAG_POS2_SET);
 
-        int[] wandTarget = resolveWandTarget(mc);
-
         float pt = event.getPartialTicks();
+        BlockPos wandTarget = resolveWandTarget(mc, pt);
+
         double vx = viewer.lastTickPosX + (viewer.posX - viewer.lastTickPosX) * pt;
         double vy = viewer.lastTickPosY + (viewer.posY - viewer.lastTickPosY) * pt;
         double vz = viewer.lastTickPosZ + (viewer.posZ - viewer.lastTickPosZ) * pt;
         float wtime = mc.world.getTotalWorldTime() + pt;
 
-        GL11.glPushMatrix();
-        GL11.glTranslated(-vx, -vy, -vz);
-        GL11.glPushAttrib(
-            GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT
-                | GL11.GL_COLOR_BUFFER_BIT
-                | GL11.GL_CURRENT_BIT
-                | GL11.GL_POLYGON_BIT
-                | GL11.GL_LINE_BIT
-                | GL11.GL_HINT_BIT);
+        GlStateManager.pushMatrix();
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
 
-        GL11.glDisable(GL11.GL_LIGHTING);
-        GL11.glDisable(GL11.GL_ALPHA_TEST);
-        GL11.glDepthMask(false);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GlStateManager.translate(-vx, -vy, -vz);
 
+        GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
         if (!(pos1Set && pos2Set)) {
-            renderWandAxis(wandTarget[0] + 0.5, wandTarget[1] + 0.5, wandTarget[2] + 0.5);
+            renderWandAxis(wandTarget);
         }
 
         renderTargetIndicator(wandTarget);
 
         if (pos1Set && (pending || pos2Set)) {
-            int bx1 = nbt.getInteger(ItemHorizonWand.TAG_POS1_X);
-            int by1 = nbt.getInteger(ItemHorizonWand.TAG_POS1_Y);
-            int bz1 = nbt.getInteger(ItemHorizonWand.TAG_POS1_Z);
-
-            int bx2, by2, bz2;
+            BlockPos pos1 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS1));
+            BlockPos pos2;
             if (pending) {
-                bx2 = wandTarget[0];
-                by2 = wandTarget[1];
-                bz2 = wandTarget[2];
+                pos2 = wandTarget;
             } else {
-                bx2 = nbt.getInteger(ItemHorizonWand.TAG_POS2_X);
-                by2 = nbt.getInteger(ItemHorizonWand.TAG_POS2_Y);
-                bz2 = nbt.getInteger(ItemHorizonWand.TAG_POS2_Z);
+                pos2 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS2));
             }
-
-            SelectionBounds bounds = SelectionBounds.fromCoords(bx1, by1, bz1, bx2, by2, bz2);
+            AxisAlignedBB bounds = toAABB(pos1, pos2);
 
             float breathe = facePulseModulation(wtime, FACE_PULSE_PERIOD_TICKS);
             float colorScale = clamp01(FACE_COLOR_CENTER + FACE_COLOR_PULSE * breathe);
 
             renderGhostWireframe(bounds);
             renderGhostFaces(bounds, breathe, colorScale);
-            renderDepthTestedFaces(bounds, breathe, colorScale);
-            renderDepthTestedWireframe(bounds);
         }
 
-        GL11.glPopAttrib();
-        GL11.glPopMatrix();
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        GlStateManager.popMatrix();
     }
 
-    private static void renderWandAxis(double cx, double cy, double cz) {
-        renderWandAxisGhost(cx, cy, cz);
-        renderWandAxisDepthTested(cx, cy, cz);
+    private static void renderWandAxis(BlockPos pos) {
+        renderWandAxisGhost(pos);
+        renderWandAxisDepthTested(pos);
     }
 
-    private static void renderWandAxisGhost(double cx, double cy, double cz) {
-        GL11.glDisable(GL11.GL_DEPTH_TEST);
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_LINE);
+    private static void renderWandAxisGhost(BlockPos pos) {
+        GlStateManager.glLineWidth(WIREFRAME_LINE_WIDTH);
+        Tessellator tess = Tessellator.getInstance();
+        BufferBuilder builder = tess.getBuffer();
+        builder.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
+        addAxisLinesWithFade(builder, pos.getX()+.5, pos.getY()+.5, pos.getZ()+.5, AXIS_EXTENT, AXIS_FADE_LENGTH, EDGE_ALPHA_THROUGH);
+        tess.draw();
+        GlStateManager.glLineWidth(1);
+    }
+
+    private static void renderWandAxisDepthTested(BlockPos pos) {
+        GlStateManager.enableDepth();
+        GlStateManager.depthFunc(GL11.GL_LEQUAL);
+        GlStateManager.enablePolygonOffset();
+        GlStateManager.doPolygonOffset(POLY_OFFSET_WIREFRAME_LINE_UNITS, POLY_OFFSET_WIREFRAME_LINE_FACTOR);
+        GlStateManager.glLineWidth(WIREFRAME_LINE_WIDTH);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
         GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
-        GL11.glLineWidth(WIREFRAME_LINE_WIDTH);
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
 
-        Tessellator tess = Tessellator.instance;
-        tess.startDrawing(GL11.GL_LINES);
-        addAxisLinesWithFade(tess, cx, cy, cz, AXIS_EXTENT, AXIS_FADE_LENGTH, EDGE_ALPHA_THROUGH);
-        tess.draw();
-    }
-
-    private static void renderWandAxisDepthTested(double cx, double cy, double cz) {
-        GL11.glEnable(GL11.GL_DEPTH_TEST);
-        GL11.glDepthFunc(GL11.GL_LEQUAL);
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glEnable(GL11.GL_POLYGON_OFFSET_LINE);
-        GL11.glPolygonOffset(POLY_OFFSET_WIREFRAME_LINE_FACTOR, POLY_OFFSET_WIREFRAME_LINE_UNITS);
-        GL11.glEnable(GL11.GL_LINE_SMOOTH);
-        GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
-        GL11.glLineWidth(WIREFRAME_LINE_WIDTH);
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-
-        Tessellator tess = Tessellator.instance;
-        tess.startDrawing(GL11.GL_LINES);
-        addAxisLinesWithFade(tess, cx, cy, cz, AXIS_EXTENT, AXIS_FADE_LENGTH, AXIS_ALPHA_NEAR);
+        Tessellator tess = Tessellator.getInstance();
+        BufferBuilder builder = tess.getBuffer();
+        builder.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
+        addAxisLinesWithFade(builder, pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5, AXIS_EXTENT, AXIS_FADE_LENGTH, AXIS_ALPHA_NEAR);
         tess.draw();
 
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_LINE);
-        GL11.glPolygonOffset(0f, 0f);
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        GlStateManager.disablePolygonOffset();
+        GlStateManager.glLineWidth(1);
     }
 
-    private static void addAxisLinesWithFade(Tessellator tess, double cx, double cy, double cz, double extent,
+    @SuppressWarnings("SameParameterValue")
+    private static void addAxisLinesWithFade(BufferBuilder builder, double cx, double cy, double cz, double extent,
         double fade, float alpha) {
         double solid = extent - fade;
         // X axis
-        addGradientLine(tess, cx, cy, cz, cx - solid, cy, cz, AXIS_RED, 0f, 0f, alpha, AXIS_RED, 0f, 0f, alpha);
-        addGradientLine(tess, cx - solid, cy, cz, cx - extent, cy, cz, AXIS_RED, 0f, 0f, alpha, AXIS_RED, 0f, 0f, 0f);
-        addGradientLine(tess, cx, cy, cz, cx + solid, cy, cz, AXIS_RED, 0f, 0f, alpha, AXIS_RED, 0f, 0f, alpha);
-        addGradientLine(tess, cx + solid, cy, cz, cx + extent, cy, cz, AXIS_RED, 0f, 0f, alpha, AXIS_RED, 0f, 0f, 0f);
+        addGradientLine(builder, cx, cy, cz, cx - solid, cy, cz, AXIS_RED, 0f, 0f, alpha, AXIS_RED, 0f, 0f, alpha);
+        addGradientLine(builder, cx - solid, cy, cz, cx - extent, cy, cz, AXIS_RED, 0f, 0f, alpha, AXIS_RED, 0f, 0f, 0f);
+        addGradientLine(builder, cx, cy, cz, cx + solid, cy, cz, AXIS_RED, 0f, 0f, alpha, AXIS_RED, 0f, 0f, alpha);
+        addGradientLine(builder, cx + solid, cy, cz, cx + extent, cy, cz, AXIS_RED, 0f, 0f, alpha, AXIS_RED, 0f, 0f, 0f);
         // Y axis
-        addGradientLine(tess, cx, cy, cz, cx, cy - solid, cz, 0f, AXIS_GREEN, 0f, alpha, 0f, AXIS_GREEN, 0f, alpha);
+        addGradientLine(builder, cx, cy, cz, cx, cy - solid, cz, 0f, AXIS_GREEN, 0f, alpha, 0f, AXIS_GREEN, 0f, alpha);
         addGradientLine(
-            tess,
+            builder,
             cx,
             cy - solid,
             cz,
@@ -210,9 +194,9 @@ public final class SelectionOutlineClientRenderer {
             AXIS_GREEN,
             0f,
             0f);
-        addGradientLine(tess, cx, cy, cz, cx, cy + solid, cz, 0f, AXIS_GREEN, 0f, alpha, 0f, AXIS_GREEN, 0f, alpha);
+        addGradientLine(builder, cx, cy, cz, cx, cy + solid, cz, 0f, AXIS_GREEN, 0f, alpha, 0f, AXIS_GREEN, 0f, alpha);
         addGradientLine(
-            tess,
+            builder,
             cx,
             cy + solid,
             cz,
@@ -228,146 +212,52 @@ public final class SelectionOutlineClientRenderer {
             0f,
             0f);
         // Z axis
-        addGradientLine(tess, cx, cy, cz - solid, cx, cy, cz, 0f, 0f, AXIS_BLUE, alpha, 0f, 0f, AXIS_BLUE, alpha);
-        addGradientLine(tess, cx, cy, cz - extent, cx, cy, cz - solid, 0f, 0f, AXIS_BLUE, 0f, 0f, 0f, AXIS_BLUE, alpha);
-        addGradientLine(tess, cx, cy, cz, cx, cy, cz + solid, 0f, 0f, AXIS_BLUE, alpha, 0f, 0f, AXIS_BLUE, alpha);
-        addGradientLine(tess, cx, cy, cz + solid, cx, cy, cz + extent, 0f, 0f, AXIS_BLUE, alpha, 0f, 0f, AXIS_BLUE, 0f);
+        addGradientLine(builder, cx, cy, cz - solid, cx, cy, cz, 0f, 0f, AXIS_BLUE, alpha, 0f, 0f, AXIS_BLUE, alpha);
+        addGradientLine(builder, cx, cy, cz - extent, cx, cy, cz - solid, 0f, 0f, AXIS_BLUE, 0f, 0f, 0f, AXIS_BLUE, alpha);
+        addGradientLine(builder, cx, cy, cz, cx, cy, cz + solid, 0f, 0f, AXIS_BLUE, alpha, 0f, 0f, AXIS_BLUE, alpha);
+        addGradientLine(builder, cx, cy, cz + solid, cx, cy, cz + extent, 0f, 0f, AXIS_BLUE, alpha, 0f, 0f, AXIS_BLUE, 0f);
     }
 
-    private static void addGradientLine(Tessellator tess, double ax, double ay, double az, double bx, double by,
-        double bz, float r0, float g0, float b0, float a0, float r1, float g1, float b1, float a1) {
-        tess.setColorRGBA_F(r0, g0, b0, a0);
-        tess.addVertex(ax, ay, az);
-        tess.setColorRGBA_F(r1, g1, b1, a1);
-        tess.addVertex(bx, by, bz);
+    private static void addGradientLine(BufferBuilder builder, double ax, double ay, double az, double bx, double by,
+                                        double bz, float r0, float g0, float b0, float a0, float r1, float g1, float b1, float a1) {
+        builder.pos(ax, ay, az).color(r0, g0, b0, a0).endVertex();
+        builder.pos(bx, by, bz).color(r1, g1, b1, a1).endVertex();
     }
 
-    private static void renderTargetIndicator(int[] target) {
-        double tx = target[0], ty = target[1], tz = target[2];
-        double x0 = tx - OUT, y0 = ty - OUT, z0 = tz - OUT;
-        double x1 = tx + 1 + OUT, y1 = ty + 1 + OUT, z1 = tz + 1 + OUT;
-
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glEnable(GL11.GL_LINE_SMOOTH);
-        GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
-        GL11.glLineWidth(1.0f);
-
-        // Ghost pass (through walls)
-        GL11.glDisable(GL11.GL_DEPTH_TEST);
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_LINE);
-
-        Tessellator tess = Tessellator.instance;
-        tess.startDrawing(GL11.GL_LINES);
-        tess.setColorRGBA_F(1f, 1f, 1f, TARGET_ALPHA_GHOST);
-        addTrueWireframeEdges(tess, x0, y0, z0, x1, y1, z1);
-        tess.draw();
-
-        // Depth-tested outline
-        GL11.glEnable(GL11.GL_DEPTH_TEST);
-        GL11.glDepthFunc(GL11.GL_LEQUAL);
-        GL11.glEnable(GL11.GL_POLYGON_OFFSET_LINE);
-        GL11.glPolygonOffset(POLY_OFFSET_WIREFRAME_LINE_FACTOR, POLY_OFFSET_WIREFRAME_LINE_UNITS);
-
-        tess.startDrawing(GL11.GL_LINES);
-        tess.setColorRGBA_F(1f, 1f, 1f, TARGET_ALPHA_NEAR);
-        addTrueWireframeEdges(tess, x0, y0, z0, x1, y1, z1);
-        tess.draw();
-
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_LINE);
-        GL11.glPolygonOffset(0f, 0f);
+    private static void renderTargetIndicator(BlockPos target) {
+        GlStateManager.glLineWidth(WIREFRAME_LINE_WIDTH * 2);
+        GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+        RenderGlobal.drawSelectionBoundingBox(new AxisAlignedBB(target), 1, 1, 1, TARGET_ALPHA_NEAR);
+        GlStateManager.glLineWidth(1);
     }
 
-    private static void renderGhostWireframe(SelectionBounds b) {
-        GL11.glDisable(GL11.GL_DEPTH_TEST);
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_LINE);
-        GL11.glEnable(GL11.GL_LINE_SMOOTH);
-        GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
-        GL11.glLineWidth(WIREFRAME_LINE_WIDTH);
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-
-        Tessellator tess = Tessellator.instance;
-        tess.startDrawing(GL11.GL_LINES);
-        tess.setColorRGBA_F(EDGE_DEEP_R, EDGE_DEEP_G, EDGE_DEEP_B, EDGE_ALPHA_THROUGH);
-        addTrueWireframeEdges(tess, b.x0, b.y0, b.z0, b.x1, b.y1, b.z1);
-        tess.draw();
+    private static void renderGhostWireframe(AxisAlignedBB b) {
+        GlStateManager.glLineWidth(WIREFRAME_LINE_WIDTH);
+        GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+        RenderGlobal.drawSelectionBoundingBox(b, EDGE_WHITE_R, EDGE_WHITE_G, EDGE_WHITE_B, EDGE_ALPHA_NEAR);
+        GlStateManager.glLineWidth(1);
     }
 
-    private static void renderGhostFaces(SelectionBounds b, float breathe, float colorScale) {
-        float alphaThrough = clamp01(FACE_THROUGH_ALPHA_CENTER + FACE_THROUGH_ALPHA_PULSE * breathe);
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glDisable(GL11.GL_CULL_FACE);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-
-        Tessellator tess = Tessellator.instance;
-        tess.startDrawing(GL11.GL_QUADS);
-        tess.setColorRGBA_F(FACE_R * colorScale, FACE_G * colorScale, FACE_B * colorScale, alphaThrough);
-        addHullFacesSolid(tess, b.fx0, b.fy0, b.fz0, b.fx1, b.fy1, b.fz1);
-        tess.draw();
+    private static void renderGhostFaces(AxisAlignedBB b, float breathe, float colorScale) {
+        float alphaThrough = clamp01(FACE_THROUGH_ALPHA_CENTER + FACE_THROUGH_ALPHA_PULSE * breathe) * 5;
+        RenderGlobal.renderFilledBox(b, FACE_R * colorScale, FACE_G * colorScale, FACE_B * colorScale, alphaThrough);
     }
 
-    private static void renderDepthTestedFaces(SelectionBounds b, float breathe, float colorScale) {
-        float alpha = clamp01(FACE_ALPHA_CENTER + FACE_ALPHA_PULSE * breathe);
-        GL11.glEnable(GL11.GL_DEPTH_TEST);
-        GL11.glDepthFunc(GL11.GL_LEQUAL);
-        GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(POLY_OFFSET_NEAR_FACE_FACTOR, POLY_OFFSET_NEAR_FACE_UNITS);
-
-        Tessellator tess = Tessellator.instance;
-        tess.startDrawing(GL11.GL_QUADS);
-        tess.setColorRGBA_F(FACE_R * colorScale, FACE_G * colorScale, FACE_B * colorScale, alpha);
-        addHullFacesSolid(tess, b.fx0, b.fy0, b.fz0, b.fx1, b.fy1, b.fz1);
-        tess.draw();
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-    }
-
-    private static void renderDepthTestedWireframe(SelectionBounds b) {
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glEnable(GL11.GL_POLYGON_OFFSET_LINE);
-        GL11.glPolygonOffset(POLY_OFFSET_WIREFRAME_LINE_FACTOR, POLY_OFFSET_WIREFRAME_LINE_UNITS);
-
-        Tessellator tess = Tessellator.instance;
-        tess.startDrawing(GL11.GL_LINES);
-        tess.setColorRGBA_F(EDGE_WHITE_R, EDGE_WHITE_G, EDGE_WHITE_B, EDGE_ALPHA_NEAR);
-        addTrueWireframeEdges(tess, b.x0, b.y0, b.z0, b.x1, b.y1, b.z1);
-        tess.draw();
-
-        GL11.glDisable(GL11.GL_POLYGON_OFFSET_LINE);
-        GL11.glPolygonOffset(0f, 0f);
-    }
-
-    @Desugar
-    private record SelectionBounds(double x0, double y0, double z0, double x1, double y1, double z1, double fx0,
-        double fy0, double fz0, double fx1, double fy1, double fz1) {
-
-        static SelectionBounds fromCoords(int bx1, int by1, int bz1, int bx2, int by2, int bz2) {
-            double minX = Math.min(bx1, bx2);
-            double minY = Math.min(by1, by2);
-            double minZ = Math.min(bz1, bz2);
-            double maxX = Math.max(bx1, bx2) + 1.0;
-            double maxY = Math.max(by1, by2) + 1.0;
-            double maxZ = Math.max(bz1, bz2) + 1.0;
-
-            return new SelectionBounds(
-                minX - OUT,
-                minY - OUT,
-                minZ - OUT,
-                maxX + OUT,
-                maxY + OUT,
-                maxZ + OUT,
-                minX - OUT - FACE_OUT_EXTRA,
-                minY - OUT - FACE_OUT_EXTRA,
-                minZ - OUT - FACE_OUT_EXTRA,
-                maxX + OUT + FACE_OUT_EXTRA,
-                maxY + OUT + FACE_OUT_EXTRA,
-                maxZ + OUT + FACE_OUT_EXTRA);
-        }
+    private static AxisAlignedBB toAABB(BlockPos pos1, BlockPos pos2) {
+        int minX = Math.min(pos1.getX(), pos2.getX());
+        int maxX = Math.max(pos1.getX(), pos2.getX()) + 1;
+        int minY = Math.min(pos1.getY(), pos2.getY());
+        int maxY = Math.max(pos1.getY(), pos2.getY()) + 1;
+        int minZ = Math.min(pos1.getZ(), pos2.getZ());
+        int maxZ = Math.max(pos1.getZ(), pos2.getZ()) + 1;
+        return new AxisAlignedBB(new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ));
     }
 
     private static float clamp01(float x) {
         return x <= 0f ? 0f : Math.min(x, 1f);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private static float facePulseModulation(float wtime, float periodTicks) {
         float phase = (float) ((wtime * (Math.PI * 2.0)) / periodTicks);
         float t = 0.5f + 0.5f * (float) Math.sin(phase);
@@ -381,60 +271,17 @@ public final class SelectionOutlineClientRenderer {
         return x * x * (3f - 2f * x);
     }
 
-    private static void addHullFacesSolid(Tessellator tess, double x0, double y0, double z0, double x1, double y1,
-        double z1) {
-        quadSolid(tess, x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1);
-        quadSolid(tess, x0, y0, z1, x0, y1, z1, x0, y1, z0, x0, y0, z0);
-        quadSolid(tess, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0);
-        quadSolid(tess, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1);
-        quadSolid(tess, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1);
-        quadSolid(tess, x1, y0, z0, x0, y0, z0, x0, y1, z0, x1, y1, z0);
-    }
-
-    private static void addTrueWireframeEdges(Tessellator tess, double minX, double minY, double minZ, double maxX,
-        double maxY, double maxZ) {
-        tess.addVertex(minX, minY, minZ);
-        tess.addVertex(maxX, minY, minZ);
-        tess.addVertex(maxX, minY, minZ);
-        tess.addVertex(maxX, minY, maxZ);
-        tess.addVertex(maxX, minY, maxZ);
-        tess.addVertex(minX, minY, maxZ);
-        tess.addVertex(minX, minY, maxZ);
-        tess.addVertex(minX, minY, minZ);
-
-        tess.addVertex(minX, maxY, minZ);
-        tess.addVertex(maxX, maxY, minZ);
-        tess.addVertex(maxX, maxY, minZ);
-        tess.addVertex(maxX, maxY, maxZ);
-        tess.addVertex(maxX, maxY, maxZ);
-        tess.addVertex(minX, maxY, maxZ);
-        tess.addVertex(minX, maxY, maxZ);
-        tess.addVertex(minX, maxY, minZ);
-
-        tess.addVertex(minX, minY, minZ);
-        tess.addVertex(minX, maxY, minZ);
-        tess.addVertex(maxX, minY, minZ);
-        tess.addVertex(maxX, maxY, minZ);
-        tess.addVertex(maxX, minY, maxZ);
-        tess.addVertex(maxX, maxY, maxZ);
-        tess.addVertex(minX, minY, maxZ);
-        tess.addVertex(minX, maxY, maxZ);
-    }
-
-    private static void quadSolid(Tessellator tess, double ax, double ay, double az, double bx, double by, double bz,
-        double cx, double cy, double cz, double dx, double dy, double dz) {
-        tess.addVertex(ax, ay, az);
-        tess.addVertex(bx, by, bz);
-        tess.addVertex(cx, cy, cz);
-        tess.addVertex(dx, dy, dz);
-    }
-
-    private static int[] resolveWandTarget(Minecraft mc) {
-        MovingObjectPosition mop = mc.objectMouseOver;
-        if (mop != null && mop.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            return ItemHorizonWand
-                .getTargetedPositionFromHit(mop.blockX, mop.blockY, mop.blockZ, mop.sideHit, mc.thePlayer.isSneaking());
+    private static BlockPos resolveWandTarget(Minecraft mc, float partialTicks) {
+        RayTraceResult mop = mc.objectMouseOver;
+        if (mop != null && mop.typeOfHit == RayTraceResult.Type.BLOCK) {
+            if (mc.player.isSneaking())
+                return mop.getBlockPos().offset(mop.sideHit);
+            return mop.getBlockPos();
         }
-        return ItemHorizonWand.getTargetedPosition(mc.thePlayer);
+        double reach = mc.playerController.getBlockReachDistance();
+        Vec3d start = mc.player.getPositionEyes(partialTicks);
+        Vec3d look = mc.player.getLook(partialTicks);
+        Vec3d end = start.add(look.scale(reach));
+        return new BlockPos(end);
     }
 }
