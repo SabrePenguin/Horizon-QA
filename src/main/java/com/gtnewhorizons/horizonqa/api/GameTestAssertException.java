@@ -5,25 +5,18 @@ import net.minecraft.util.math.BlockPos;
 
 @Experimental
 public class GameTestAssertException extends AssertionError {
-
-    private final int x;
-    private final int y;
-    private final int z;
+    private final BlockPos position;
     private final boolean hasPosition;
 
     public GameTestAssertException(String message, int x, int y, int z) {
         super(message);
-        this.x = x;
-        this.y = y;
-        this.z = z;
+        this.position = new BlockPos(x, y, z);
         this.hasPosition = false;
     }
 
     public GameTestAssertException(String message, BlockPos pos) {
         super(message);
-        this.x = pos.getX();
-        this.y = pos.getY();
-        this.z = pos.getZ();
+        this.position = pos;
         this.hasPosition = true;
     }
 
@@ -32,18 +25,18 @@ public class GameTestAssertException extends AssertionError {
     }
 
     public int getX() {
-        return x;
+        return position.getX();
     }
 
     public int getY() {
-        return y;
+        return position.getY();
     }
 
     public int getZ() {
-        return z;
+        return position.getZ();
     }
 
-    public TestPos getPos() {
-        return new TestPos(x, y, z);
+    public BlockPos getPos() {
+        return position;
     }
 }

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.horizonqa.command;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.gtnewhorizons.horizonqa.item.ItemRegistration;
+import com.gtnewhorizons.horizonqa.structure.StructurePlacer;
 import mcp.MethodsReturnNonnullByDefault;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.command.CommandBase;
@@ -17,6 +19,7 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.command.PlayerNotFoundException;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.EnumHand;
@@ -36,6 +39,7 @@ import com.gtnewhorizons.horizonqa.internal.InteractiveTestSession;
 import com.gtnewhorizons.horizonqa.internal.InvalidTestDefinition;
 import com.gtnewhorizons.horizonqa.item.ItemHorizonWand;
 import com.gtnewhorizons.horizonqa.structure.StructureExporter;
+import net.minecraft.world.gen.structure.template.Template;
 import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -345,10 +349,12 @@ public class HorizonQACommand extends CommandBase {
                 new TextComponentString(TextFormatting.RED + "No test cells found. Run /horizonqa runall first."));
             return;
         }
-        int relX = pos.getX() - cell.originX();
-        int relY = pos.getY() - cell.originY();
-        int relZ = pos.getZ() - cell.originZ();
-        String call = String.format("helper.absolute(%d, %d, %d)", relX, relY, relZ);
+        BlockPos relative = new BlockPos(
+            pos.getX() - cell.origin().getX(),
+            pos.getY() - cell.origin().getY(),
+            pos.getZ() - cell.origin().getZ()
+        );
+        String call = String.format("helper.absolute(%d, %d, %d)", relative.getX(), relative.getY(), relative.getZ());
 
         sender.sendMessage(
             new TextComponentString(TextFormatting.AQUA + "Test: " + TextFormatting.YELLOW + cell.testId()));
@@ -361,7 +367,7 @@ public class HorizonQACommand extends CommandBase {
             new TextComponentString(
                 TextFormatting.AQUA + "Relative: "
                     + TextFormatting.WHITE
-                    + String.format("(%d, %d, %d)", relX, relY, relZ)));
+                    + String.format("(%d, %d, %d)", relative.getX(), relative.getY(), relative.getZ())));
 
         TextComponentString clickable = new TextComponentString(
             TextFormatting.GREEN + call + TextFormatting.GRAY + "  « click to copy to chat");
@@ -431,15 +437,11 @@ public class HorizonQACommand extends CommandBase {
         BlockPos pos1 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS1));
         BlockPos pos2 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS2));
 
-        // TODO: BlockPos sort
-        int minX = Math.min(pos1.getX(), pos2.getX()), minY = Math.min(pos1.getY(), pos2.getY()), minZ = Math.min(pos1.getZ(), pos2.getZ());
-        int maxX = Math.max(pos1.getX(), pos2.getX()), maxY = Math.max(pos1.getY(), pos2.getY()), maxZ = Math.max(pos1.getZ(), pos2.getZ());
-
         WorldServer world = (WorldServer) player.world;
         File outputDir = server.getFile("horizonqastructures");
 
         try {
-            StructureExporter.export(world, new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ), outputDir, name);
+            StructureExporter.export(world, pos1, pos2, outputDir, name);
             sender.sendMessage(
                 new TextComponentString(
                     TextFormatting.GREEN + "Exported '"

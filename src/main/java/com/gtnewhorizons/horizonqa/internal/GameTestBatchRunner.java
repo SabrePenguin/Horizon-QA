@@ -1,6 +1,7 @@
 package com.gtnewhorizons.horizonqa.internal;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -13,9 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import net.minecraft.nbt.CompressedStreamTools;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
+import net.minecraft.world.gen.structure.template.Template;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,8 +36,6 @@ import com.gtnewhorizons.horizonqa.report.IssueResult;
 import com.gtnewhorizons.horizonqa.report.JUnitXmlReporter;
 import com.gtnewhorizons.horizonqa.report.RunResult;
 import com.gtnewhorizons.horizonqa.report.StatusJsonReporter;
-import com.gtnewhorizons.horizonqa.structure.HybridStructureLoader;
-import com.gtnewhorizons.horizonqa.structure.HybridStructureTemplate;
 import com.gtnewhorizons.horizonqa.structure.StructurePlacer;
 import com.gtnewhorizons.horizonqa.structure.TemplateException;
 
@@ -119,7 +121,7 @@ public class GameTestBatchRunner {
                 continue;
             }
             TestCellScanner
-                .preClearWithMargin(world, p.cellMinX, p.cellMinY, p.cellMinZ, p.cellMaxX, p.cellMaxY, p.cellMaxZ);
+                .preClearWithMargin(world, p.cellMin, p.cellMax);
         }
 
         for (int i = 0; i < planned.size(); i++) {
@@ -128,19 +130,7 @@ public class GameTestBatchRunner {
                 continue;
             }
             if (p.template != null) {
-                try {
-                    StructurePlacer.placeStrict(
-                        p.def.getTemplateName(),
-                        p.template,
-                        world,
-                        p.originX,
-                        p.originY,
-                        p.originZ,
-                        p.def.getRotation(),
-                        GTNHGameTestHelper::rotateStructureTileNbt);
-                } catch (TemplateException e) {
-                    planned.set(i, p.withTemplateError(templateErrorCase(p.def, e)));
-                }
+                StructurePlacer.place(p.template, world, p.origin);
             }
         }
 
@@ -150,11 +140,11 @@ public class GameTestBatchRunner {
                 resultEntries.add(ResultEntry.result(p.templateError));
                 continue;
             }
-            GameTestInstance inst = new GameTestInstance(p.def, p.originX, p.originY, p.originZ);
+            GameTestInstance inst = new GameTestInstance(p.def, p.origin);
             if (p.template != null) {
                 final String templateName = p.def.getTemplateName();
-                final int sx = p.tmplSizeX, sy = p.tmplSizeY, sz = p.tmplSizeZ;
-                final BlockPos origin = new BlockPos(p.originX, p.originY, p.originZ);
+                final int sx = p.templateSize.getX(), sy = p.templateSize.getY(), sz = p.templateSize.getZ();
+                final BlockPos origin = new BlockPos(p.origin);
                 TestEventRecorder rec = inst.getRecorder();
                 rec.record(
                     () -> new StructurePlaced(
@@ -167,24 +157,16 @@ public class GameTestBatchRunner {
                         sz));
             }
 
-            int tmplMaxX = p.tmplSizeX > 0 ? p.originX + p.tmplSizeX - 1 : -1;
-            int tmplMaxY = p.tmplSizeY > 0 ? p.originY + p.tmplSizeY - 1 : -1;
-            int tmplMaxZ = p.tmplSizeZ > 0 ? p.originZ + p.tmplSizeZ - 1 : -1;
+            BlockPos templateMax = new BlockPos(p.templateSize.getX() > 0 ? p.origin.getX() + p.templateSize.getX() - 1 : -1,
+                p.templateSize.getY() > 0 ? p.origin.getY() + p.templateSize.getY() - 1 : -1,
+                p.templateSize.getZ() > 0 ? p.origin.getZ() + p.templateSize.getZ() - 1 : -1);
             TestCellScanner.registerIsolationCheck(
                 inst,
                 world,
-                p.cellMinX,
-                p.cellMinY,
-                p.cellMinZ,
-                p.cellMaxX,
-                p.cellMaxY,
-                p.cellMaxZ,
-                p.originX,
-                p.originY,
-                p.originZ,
-                tmplMaxX,
-                tmplMaxY,
-                tmplMaxZ,
+                p.cellMin,
+                p.cellMax,
+                p.origin,
+                templateMax,
                 p.template != null);
 
             inst.start(world);
@@ -321,58 +303,54 @@ public class GameTestBatchRunner {
     }
 
     private PlannedTest plan(GameTestDefinition def, WorldServer world) {
-        HybridStructureTemplate template;
-        try {
-            template = loadTemplate(def);
-        } catch (IOException e) {
-            return PlannedTest.templateError(def, templateErrorCase(def, e));
-        }
+        Template template = loadTemplate(def);
 
-        int sizeX = template != null ? StructurePlacer.placedSizeX(template, def.getRotation()) : 0;
-        int sizeY = template != null ? template.getSizeY() : 0;
-        int sizeZ = template != null ? StructurePlacer.placedSizeZ(template, def.getRotation()) : 0;
-        int[] origin = grid.allocateOrigin(sizeX, sizeZ);
+        BlockPos.MutableBlockPos size = new BlockPos.MutableBlockPos(template != null ? template.getSize(): new BlockPos(0, 0, 0));
+        BlockPos origin = grid.allocateOrigin(size.getX(), size.getZ());
 
-        int cellSizeX = Math.max(sizeX, GameTestGridLayout.DEFAULT_CELL_SIZE);
-        int cellSizeY = Math.max(sizeY, 1);
-        int cellSizeZ = Math.max(sizeZ, GameTestGridLayout.DEFAULT_CELL_SIZE);
+        size.setPos(
+            Math.max(size.getX(), GameTestGridLayout.DEFAULT_CELL_SIZE),
+            Math.max(size.getY(), 1),
+            Math.max(size.getZ(), GameTestGridLayout.DEFAULT_CELL_SIZE));
 
-        int cellMinX = origin[0];
-        int cellMinY = origin[1];
-        int cellMinZ = origin[2];
-        int cellMaxX = origin[0] + cellSizeX - 1;
-        int cellMaxY = origin[1] + cellSizeY - 1;
-        int cellMaxZ = origin[2] + cellSizeZ - 1;
-
+        BlockPos cellMin = origin;
+        BlockPos cellMax = addPos(origin, size);
         try {
             HorizonQAMod.CHUNK_LOADER
-                .forceChunksStrict(world, cellMinX, cellMinY, cellMinZ, cellMaxX, cellMaxY, cellMaxZ);
+                .forceChunksStrict(world, cellMin, cellMax);
         } catch (TemplateException e) {
             return PlannedTest.templateError(def, templateErrorCase(def, e));
         }
-
         return new PlannedTest(
             def,
             template,
-            origin[0],
-            origin[1],
-            origin[2],
-            sizeX,
-            sizeY,
-            sizeZ,
-            cellMinX,
-            cellMinY,
-            cellMinZ,
-            cellMaxX,
-            cellMaxY,
-            cellMaxZ,
-            null);
+            origin,
+            size.toImmutable(),
+            cellMin,
+            cellMax);
     }
 
-    private static HybridStructureTemplate loadTemplate(GameTestDefinition def) throws IOException {
+    private BlockPos addPos(BlockPos origin, BlockPos size) {
+        return new BlockPos(origin.getX() + size.getX() - 1, origin.getY() + size.getY() - 1, origin.getZ() + size.getZ() - 1);
+    }
+
+    private static Template loadTemplate(GameTestDefinition def) {
         if (def.getTemplateName()
             .isEmpty()) return null;
-        return HybridStructureLoader.load(def.getTemplateName());
+        File input = new File(def.getTemplateName());
+        try (FileInputStream fis = new FileInputStream(input)){
+            NBTTagCompound rootNBT = CompressedStreamTools.readCompressed(fis);
+            Template template = new Template();
+            template.read(rootNBT);
+            return template;
+        } catch (IOException e) {
+            LOG.error(
+                "Failed to load template '{}' for test '{}' — test will run without a structure: {}",
+                def.getTemplateName(),
+                def.getTestId(),
+                e.getMessage());
+            return null;
+        }
     }
 
     private static CaseResult templateErrorCase(GameTestDefinition def, Throwable error) {
@@ -545,36 +523,45 @@ public class GameTestBatchRunner {
         }
     }
 
-    @Desugar
-    private record PlannedTest(GameTestDefinition def, HybridStructureTemplate template, int originX, int originY,
-        int originZ, int tmplSizeX, int tmplSizeY, int tmplSizeZ, int cellMinX, int cellMinY, int cellMinZ,
-        int cellMaxX, int cellMaxY, int cellMaxZ, CaseResult templateError) {
+
+    private static final class PlannedTest {
+
+        final GameTestDefinition def;
+        final Template template;
+        final BlockPos origin;
+        final BlockPos templateSize;
+        final BlockPos cellMin;
+        final BlockPos cellMax;
+        CaseResult templateError;
 
         static PlannedTest templateError(GameTestDefinition def, CaseResult result) {
-            return new PlannedTest(def, null, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, result);
+            return new PlannedTest(def, null, new BlockPos(0, 0, 0), new BlockPos(0, 0, 0), new BlockPos(0, 0, 0), new BlockPos(0, 0, 0), result);
         }
 
         boolean hasTemplateError() {
             return templateError != null;
         }
 
+        PlannedTest(GameTestDefinition def, Template template, BlockPos origin, BlockPos templateSize,
+                    BlockPos cellMin, BlockPos cellMax) {
+            this.def = def;
+            this.template = template;
+            this.origin = origin;
+            this.templateSize = templateSize;
+            this.cellMin = cellMin;
+            this.cellMax = cellMax;
+        }
+
         PlannedTest withTemplateError(CaseResult result) {
             return new PlannedTest(
                 def,
                 template,
-                originX,
-                originY,
-                originZ,
-                tmplSizeX,
-                tmplSizeY,
-                tmplSizeZ,
-                cellMinX,
-                cellMinY,
-                cellMinZ,
-                cellMaxX,
-                cellMaxY,
-                cellMaxZ,
-                result);
+                origin,
+                templateSize,
+                cellMin,
+                cellMax
+//                result
+            );
         }
 
     }

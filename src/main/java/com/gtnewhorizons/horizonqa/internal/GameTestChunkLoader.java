@@ -22,10 +22,6 @@ public final class GameTestChunkLoader implements ForgeChunkManager.OrderedLoadi
 
     private final List<Ticket> tickets = new ArrayList<>();
 
-    public void forceChunks(World world, int x1, int y1, int z1, int x2, int y2, int z2) {
-        forceChunks(world, new BlockPos(x1, y1, z1), new BlockPos(x2, y2, z2));
-    }
-
     public void forceChunks(World world, BlockPos pos1, BlockPos pos2) {
         try {
             forceChunksStrict(world, pos1, pos2);

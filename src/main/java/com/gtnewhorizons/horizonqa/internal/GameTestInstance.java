@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
 import org.apache.logging.log4j.LogManager;
@@ -26,9 +27,7 @@ public class GameTestInstance {
     private static final Logger LOG = LogManager.getLogger("GameTest");
 
     private final GameTestDefinition definition;
-    private final int originX;
-    private final int originY;
-    private final int originZ;
+    private final BlockPos origin;
 
     private GameTestStatus status = GameTestStatus.NOT_STARTED;
     private int tickCount = 0;
@@ -48,20 +47,23 @@ public class GameTestInstance {
 
     public GameTestInstance(GameTestDefinition definition, int originX, int originY, int originZ) {
         this.definition = definition;
-        this.originX = originX;
-        this.originY = originY;
-        this.originZ = originZ;
+        this.origin = new BlockPos(originX, originY, originZ);
+    }
+
+    public GameTestInstance(GameTestDefinition definition, BlockPos origin) {
+        this.definition = definition;
+        this.origin = origin;
     }
 
     public void start(WorldServer world) {
         status = GameTestStatus.RUNNING;
-        GameTestHelper helper = new GameTestHelper(this, world, originX, originY, originZ);
+        GameTestHelper helper = new GameTestHelper(this, world, origin);
         recorder.record(
             () -> new TestStarted(
                 recorder.clock()
                     .tick(),
                 definition.getTestId(),
-                new TestPos(originX, originY, originZ)));
+                origin));
         try {
             definition.getMethod()
                 .invoke(null, helper);
@@ -162,7 +164,7 @@ public class GameTestInstance {
     }
 
     public void fail(String message) {
-        fail(new GameTestAssertException(message, originX, originY, originZ));
+        fail(new GameTestAssertException(message, origin));
     }
 
     public void fail(Throwable cause) {
@@ -327,18 +329,6 @@ public class GameTestInstance {
 
     public Throwable getCleanupFailureCause() {
         return cleanupFailureCause;
-    }
-
-    public int getOriginX() {
-        return originX;
-    }
-
-    public int getOriginY() {
-        return originY;
-    }
-
-    public int getOriginZ() {
-        return originZ;
     }
 
     public int getTickCount() {

@@ -52,13 +52,15 @@ public class GameTestHelper {
     private final int originY;
     private final int originZ;
     private GTNHGameTestHelper gtnh;
+    private final BlockPos origin;
 
-    public GameTestHelper(GameTestInstance instance, WorldServer world, int originX, int originY, int originZ) {
+    public GameTestHelper(GameTestInstance instance, WorldServer world, BlockPos origin) {
         this.instance = instance;
         this.world = world;
-        this.originX = originX;
-        this.originY = originY;
-        this.originZ = originZ;
+        this.origin = origin;
+        this.originX = origin.getX();
+        this.originY = origin.getY();
+        this.originZ = origin.getZ();
     }
 
     /**

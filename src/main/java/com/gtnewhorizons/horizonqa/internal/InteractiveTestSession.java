@@ -1,5 +1,7 @@
 package com.gtnewhorizons.horizonqa.internal;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,10 +11,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.minecraft.nbt.CompressedStreamTools;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
+import net.minecraft.world.gen.structure.template.Template;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -81,14 +86,13 @@ public class InteractiveTestSession {
 
         ensureRunnerRegistered();
         for (PlannedTest plannedTest : planned) {
+            Template template = loadTemplate(def);
+            BlockPos size = template != null ? template.getSize(): new BlockPos(0, 0, 0);
+            BlockPos origin = grid.allocateOrigin(size.getX(), size.getZ());
             GameTestInstance inst = spawnPlannedTest(plannedTest, world);
+            GameTestInstance inst = spawnTestAt(def, world, origin, template);
             runner.addInstance(inst);
-            LOG.info(
-                "[GameTest] Launched '{}' at ({}, {}, {}).",
-                plannedTest.def.getTestId(),
-                plannedTest.originX,
-                plannedTest.originY,
-                plannedTest.originZ);
+            LOG.info("[GameTest] Launched '{}' at {}.", plannedTest.def.getTestId(), origin);
         }
         LOG.info("[GameTest] Launched {} test(s) total.", defs.size());
         return planned.size();
@@ -108,14 +112,14 @@ public class InteractiveTestSession {
             return false;
         }
         ensureRunnerRegistered();
+        Template template = loadTemplate(def);
+        GameTestInstance inst = spawnTestAt(def, world, existing.origin(), template);
         GameTestInstance inst = spawnPlannedTest(plannedTest, world);
         runner.addInstance(inst);
         LOG.info(
-            "[GameTest] Re-launched '{}' in-place at ({}, {}, {}).",
+            "[GameTest] Re-launched '{}' in-place at {}.",
             def.getTestId(),
-            existing.originX(),
-            existing.originY(),
-            existing.originZ());
+            existing.origin());
         return true;
     }
 
@@ -164,50 +168,42 @@ public class InteractiveTestSession {
     private List<PlannedTest> planTests(List<GameTestDefinition> defs) {
         List<PlannedTest> planned = new ArrayList<>(defs.size());
         for (GameTestDefinition def : defs) {
-            HybridStructureTemplate template = loadTemplate(def);
+            Template template = loadTemplate(def);
             int sizeX = template != null ? StructurePlacer.placedSizeX(template, def.getRotation()) : 0;
             int sizeZ = template != null ? StructurePlacer.placedSizeZ(template, def.getRotation()) : 0;
-            int[] origin = grid.allocateOrigin(sizeX, sizeZ);
-            planned.add(planTestAt(def, origin[0], origin[1], origin[2], template));
+            BlockPos origin = grid.allocateOrigin(sizeX, sizeZ);
+            planned.add(planTestAt(def, origin, template));
         }
         return planned;
     }
 
-    private PlannedTest planTestAt(GameTestDefinition def, int originX, int originY, int originZ) {
-        return planTestAt(def, originX, originY, originZ, loadTemplate(def));
+    private PlannedTest planTestAt(GameTestDefinition def, BlockPos origin) {
+        return planTestAt(def, origin, loadTemplate(def));
     }
 
-    private PlannedTest planTestAt(GameTestDefinition def, int originX, int originY, int originZ,
-        HybridStructureTemplate template) {
-        int sizeX = template != null ? StructurePlacer.placedSizeX(template, def.getRotation()) : 0;
-        int sizeY = template != null ? template.getSizeY() : 0;
-        int sizeZ = template != null ? StructurePlacer.placedSizeZ(template, def.getRotation()) : 0;
+    private PlannedTest planTestAt(GameTestDefinition def, WorldServer world, BlockPos origin, Template template) {
+        BlockPos size = template != null ? template.getSize() : new BlockPos(0, 0, 0);
 
-        int cellSizeX = sizeX > 0 ? sizeX : GameTestGridLayout.DEFAULT_CELL_SIZE;
-        int cellSizeY = sizeY > 0 ? sizeY : GameTestGridLayout.DEFAULT_CELL_SIZE;
-        int cellSizeZ = sizeZ > 0 ? sizeZ : GameTestGridLayout.DEFAULT_CELL_SIZE;
+        BlockPos cellSize = new BlockPos(
+            size.getX() > 0 ? size.getX() : GameTestGridLayout.DEFAULT_CELL_SIZE,
+            size.getX() > 0 ? size.getX() : GameTestGridLayout.DEFAULT_CELL_SIZE,
+            size.getX() > 0 ? size.getX() : GameTestGridLayout.DEFAULT_CELL_SIZE
+        );
 
-        int cellMinX = originX;
-        int cellMinY = originY;
-        int cellMinZ = originZ;
-        int cellMaxX = originX + cellSizeX - 1;
-        int cellMaxY = originY + cellSizeY - 1;
-        int cellMaxZ = originZ + cellSizeZ - 1;
+        BlockPos cellMin = origin;
 
+        BlockPos cellMax = new BlockPos(
+            origin.getX() + cellSize.getX() - 1,
+            origin.getY() + cellSize.getY() - 1,
+            origin.getZ() + cellSize.getY() - 1
+        );
         return new PlannedTest(
             def,
             template,
-            originX,
-            originY,
-            originZ,
-            new BlockPos(cellMinX,
-                cellMinY,
-                cellMinZ),
-            new BlockPos(cellMaxX,
-                cellMaxY,
-                cellMaxZ));
+            origin,
+            cellMin,
+            cellMax);
     }
-
     private static boolean forcePlannedArea(WorldServer world, List<PlannedTest> planned) {
         if (planned.isEmpty()) return true;
 
@@ -243,7 +239,6 @@ public class InteractiveTestSession {
             return false;
         }
     }
-
     private GameTestInstance spawnPlannedTest(PlannedTest plannedTest, WorldServer world) {
         GameTestDefinition def = plannedTest.def;
         HybridStructureTemplate template = plannedTest.template;
@@ -289,21 +284,37 @@ public class InteractiveTestSession {
         int tmplMaxX = plannedTest.sizeX > 0 ? originX + plannedTest.sizeX - 1 : -1;
         int tmplMaxY = plannedTest.sizeY > 0 ? originY + plannedTest.sizeY - 1 : -1;
         int tmplMaxZ = plannedTest.sizeZ > 0 ? originZ + plannedTest.sizeZ - 1 : -1;
+
+        TestCellScanner.preClear(world, cellMin, cellMax);
+
+        if (template != null) {
+            StructurePlacer.place(template, world, origin);
+        }
+
+        CellRecord cell = new CellRecord(
+            def.getTestId(),
+            origin,
+            cellMin,
+            cellMax);
+        knownCells.put(def.getTestId(), cell);
+
+        GameTestInstance inst = new GameTestInstance(def, origin);
+
+        int tmplMaxX = plannedTest.sizeX > 0 ? originX + plannedTest.sizeX - 1 : -1;
+        int tmplMaxY = plannedTest.sizeY > 0 ? originY + plannedTest.sizeY - 1 : -1;
+        int tmplMaxZ = plannedTest.sizeZ > 0 ? originZ + plannedTest.sizeZ - 1 : -1;
+        BlockPos templateMax = new BlockPos(
+            size.getX() > 0 ? origin.getX() + size.getX() - 1 : -1,
+            size.getY() > 0 ? origin.getY() + size.getY() - 1 : -1,
+            size.getZ() > 0 ? origin.getZ() + size.getZ() - 1 : -1
+        );
         TestCellScanner.registerIsolationCheck(
             inst,
             world,
-            plannedTest.cellMinX,
-            plannedTest.cellMinY,
-            plannedTest.cellMinZ,
-            plannedTest.cellMaxX,
-            plannedTest.cellMaxY,
-            plannedTest.cellMaxZ,
-            originX,
-            originY,
-            originZ,
-            tmplMaxX,
-            tmplMaxY,
-            tmplMaxZ,
+            cellMin,
+            cellMax,
+            origin,
+            templateMax,
             template != null);
 
         inst.start(world);
@@ -315,36 +326,19 @@ public class InteractiveTestSession {
 
         final GameTestDefinition def;
         final HybridStructureTemplate template;
-        final int originX;
-        final int originY;
-        final int originZ;
-        final int sizeX;
-        final int sizeY;
-        final int sizeZ;
-        final int cellMinX;
-        final int cellMinY;
-        final int cellMinZ;
-        final int cellMaxX;
-        final int cellMaxY;
-        final int cellMaxZ;
+        final BlockPos origin;
+        final BlockPos size;
+        final BlockPos cellMin;
+        final BlockPos cellMax;
 
-        PlannedTest(GameTestDefinition def, HybridStructureTemplate template, int originX, int originY, int originZ,
-            int sizeX, int sizeY, int sizeZ, int cellMinX, int cellMinY, int cellMinZ, int cellMaxX, int cellMaxY,
-            int cellMaxZ) {
+        PlannedTest(GameTestDefinition def, HybridStructureTemplate template, BlockPos origin,
+            BlockPos size, BlockPos cellMin, BlockPos cellMax) {
             this.def = def;
             this.template = template;
-            this.originX = originX;
-            this.originY = originY;
-            this.originZ = originZ;
-            this.sizeX = sizeX;
-            this.sizeY = sizeY;
-            this.sizeZ = sizeZ;
-            this.cellMinX = cellMinX;
-            this.cellMinY = cellMinY;
-            this.cellMinZ = cellMinZ;
-            this.cellMaxX = cellMaxX;
-            this.cellMaxY = cellMaxY;
-            this.cellMaxZ = cellMaxZ;
+            this.origin = origin;
+            this.size = size;
+            this.cellMin = cellMin;
+            this.cellMax = cellMax;
         }
     }
 
@@ -352,11 +346,15 @@ public class InteractiveTestSession {
         GridSweeper.clearAndNotify(world, cell.minPos(), cell.maxPos());
     }
 
-    private static HybridStructureTemplate loadTemplate(GameTestDefinition def) {
+    private static Template loadTemplate(GameTestDefinition def) {
         if (def.getTemplateName()
             .isEmpty()) return null;
-        try {
-            return HybridStructureLoader.load(def.getTemplateName());
+        File input = new File(def.getTemplateName());
+        try (FileInputStream fis = new FileInputStream(input)){
+            NBTTagCompound rootNBT = CompressedStreamTools.readCompressed(fis);
+            Template template = new Template();
+            template.read(rootNBT);
+            return template;
         } catch (IOException e) {
             LOG.error(
                 "[GameTest] Failed to load template '{}' for test '{}': {}",

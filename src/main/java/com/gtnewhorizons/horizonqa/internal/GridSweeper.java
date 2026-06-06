@@ -22,6 +22,10 @@ final class GridSweeper {
         clear(world, new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ), false);
     }
 
+    static void clear(WorldServer world, BlockPos pos1, BlockPos pos2) {
+        clear(world, pos1, pos2, false);
+    }
+
     static void clearAndNotify(WorldServer world, BlockPos min, BlockPos max) {
         clear(world, min, max, true);
     }

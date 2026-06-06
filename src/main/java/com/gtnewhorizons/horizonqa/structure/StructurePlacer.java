@@ -4,12 +4,15 @@ import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.ChunkProviderServer;
-import net.minecraftforge.common.util.ForgeDirection;
 
+import net.minecraft.world.gen.structure.template.PlacementSettings;
+import net.minecraft.world.gen.structure.template.Template;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,114 +29,10 @@ public final class StructurePlacer {
         void rotate(NBTTagCompound nbt, int rotation);
     }
 
-    public static void place(HybridStructureTemplate template, WorldServer world, int originX, int originY,
-        int originZ) {
-        place(template, world, originX, originY, originZ, 0);
-    }
-
-    public static void place(HybridStructureTemplate template, WorldServer world, int originX, int originY, int originZ,
-        int rotation) {
-        place(template, world, originX, originY, originZ, rotation, NO_TILE_ENTITY_NBT_ROTATION);
-    }
-
-    public static void place(HybridStructureTemplate template, WorldServer world, int originX, int originY, int originZ,
-        int rotation, TileEntityNbtRotator tileNbtRotator) {
-        try {
-            placeInternal("unknown", template, world, originX, originY, originZ, rotation, tileNbtRotator, false);
-        } catch (TemplateException e) {
-            LOG.warn("StructurePlacer: {}", e.getMessage());
-        }
-    }
-
-    public static void placeStrict(String templateName, HybridStructureTemplate template, WorldServer world,
-        int originX, int originY, int originZ) throws TemplateException {
-        placeStrict(templateName, template, world, originX, originY, originZ, 0);
-    }
-
-    public static void placeStrict(String templateName, HybridStructureTemplate template, WorldServer world,
-        int originX, int originY, int originZ, int rotation) throws TemplateException {
-        placeStrict(templateName, template, world, originX, originY, originZ, rotation, NO_TILE_ENTITY_NBT_ROTATION);
-    }
-
-    public static void placeStrict(String templateName, HybridStructureTemplate template, WorldServer world,
-        int originX, int originY, int originZ, int rotation, TileEntityNbtRotator tileNbtRotator)
-        throws TemplateException {
-        placeInternal(templateName, template, world, originX, originY, originZ, rotation, tileNbtRotator, true);
-    }
-
-    public static int placedSizeX(HybridStructureTemplate template, int rotation) {
-        if (template == null) {
-            return 0;
-        }
-        return placedSizeX(template.getSizeX(), template.getSizeZ(), normalizeRotation(rotation));
-    }
-
-    public static int placedSizeZ(HybridStructureTemplate template, int rotation) {
-        if (template == null) {
-            return 0;
-        }
-        return placedSizeZ(template.getSizeX(), template.getSizeZ(), normalizeRotation(rotation));
-    }
-
-    private static void placeInternal(String templateName, HybridStructureTemplate template, WorldServer world,
-        int originX, int originY, int originZ, int rotation, TileEntityNbtRotator tileNbtRotator, boolean strict)
-        throws TemplateException {
-
-        int rotationSteps = normalizeRotation(rotation);
-        TileEntityNbtRotator rotator = tileNbtRotator != null ? tileNbtRotator : NO_TILE_ENTITY_NBT_ROTATION;
-
-        HybridStructureTemplate.PaletteEntry[] palette = template.getPalette();
-        Block[] resolvedPalette = resolvePalette(templateName, palette, strict);
-        int sizeX = template.getSizeX();
-        int sizeY = template.getSizeY();
-        int sizeZ = template.getSizeZ();
-        int placedSizeX = placedSizeX(sizeX, sizeZ, rotationSteps);
-        int placedSizeZ = placedSizeZ(sizeX, sizeZ, rotationSteps);
-
-        ensureChunksLoaded(world, originX, originZ, placedSizeX, placedSizeZ);
-
-        int notifyClients = 2;
-        for (int x = 0; x < sizeX; x++) {
-            for (int y = 0; y < sizeY; y++) {
-                for (int z = 0; z < sizeZ; z++) {
-                    int idx = template.getPaletteIndex(x, y, z);
-                    HybridStructureTemplate.PaletteEntry entry = palette[idx];
-                    Block block = resolvedPalette[idx];
-                    if (block == null) {
-                        continue;
-                    }
-                    BlockPos pos = new BlockPos(originX + rotatedLocalX(x, z, sizeX, sizeZ, rotationSteps), originY + y, originZ + rotatedLocalZ(x, z, sizeX, sizeZ, rotationSteps));
-                    IBlockState state = block.getStateFromMeta(entry.meta);
-                    world.setBlockState(pos, state);
-
-                    NBTTagCompound teNbt = template.getTileEntity(x, y, z);
-                    if (teNbt == null && !block.hasTileEntity(state)) {
-                        continue;
-                    }
-
-                    TileEntity te = ensureTileEntity(world, pos, state);
-                    if (te == null) {
-                        if (teNbt != null) {
-                            LOG.warn(
-                                "StructurePlacer: no TileEntity at ({}) after block placement "
-                                    + "— skipping NBT injection",
-                                pos);
-                        }
-                        continue;
-                    }
-
-                    if (teNbt != null) {
-                        NBTTagCompound patchedNbt = teNbt.copy();
-                        patchedNbt.setInteger("x", pos.getX());
-                        patchedNbt.setInteger("y", pos.getY());
-                        patchedNbt.setInteger("z", pos.getZ());
-
-                        te.readFromNBT(patchedNbt);
-                        world.notifyBlockUpdate(pos, world.getBlockState(pos), world.getBlockState(pos), 3);
-                    }
-                }
-            }
-        }
+    public static void place(Template template, WorldServer world, BlockPos pos) {
+        PlacementSettings settings = new PlacementSettings()
+            .setIgnoreEntities(true);
+        template.addBlocksToWorld(world, pos, settings, 2);
     }
 
     static int rotatedLocalX(int x, int z, int sizeX, int sizeZ, int rotation) {
@@ -176,7 +75,7 @@ public final class StructurePlacer {
         }
         for (int i = 0; i < rotation; i++) {
             try {
-                block.rotateBlock(world, wx, wy, wz, ForgeDirection.UP);
+                block.rotateBlock(world, wx, wy, wz, EnumFacing.UP);
             } catch (RuntimeException e) {
                 handleTemplateError(
                     strict,
@@ -231,133 +130,6 @@ public final class StructurePlacer {
                     world.getChunk(cx, cz);
                 }
             }
-        }
-    }
-
-    private static TileEntity ensureTileEntity(WorldServer world, BlockPos pos, IBlockState state) {
-        if (!state.getBlock().hasTileEntity(state)) {
-            return null;
-        }
-
-        TileEntity te = world.getTileEntity(pos);
-        if (te != null) {
-            return te;
-        }
-
-        te = state.getBlock().createTileEntity(world, state);
-        if (te == null) {
-            LOG.warn(
-                "StructurePlacer: block {} (meta {}) returned null from createTileEntity at ({})",
-                RegistryStringResolver.getName(state.getBlock()),
-                state.getBlock().getMetaFromState(state),
-                pos);
-            return null;
-        }
-
-        world.setTileEntity(pos, te);
-        te = world.getTileEntity(pos);
-        if (te == null) {
-            Chunk chunk = world.getChunk(pos.getX() >> 4, pos.getZ() >> 4);
-            if (chunk != null) {
-                chunk.addTileEntity(pos, state.getBlock().createTileEntity(world, state));
-                te = world.getTileEntity(pos);
-            }
-        }
-        if (te == null) {
-            handleTemplateError(
-                strict,
-                "Could not attach TileEntity for block '" + entry.name
-                    + "' (meta "
-                    + entry.meta
-                    + ") at ("
-                    + wx
-                    + ","
-                    + wy
-                    + ","
-                    + wz
-                    + ")",
-                null);
-        }
-        return te;
-    }
-
-    private static TileEntity getTileEntity(WorldServer world, int wx, int wy, int wz,
-        HybridStructureTemplate.PaletteEntry entry, boolean strict) throws TemplateException {
-        try {
-            return world.getTileEntity(wx, wy, wz);
-        } catch (RuntimeException e) {
-            handleTemplateError(
-                strict,
-                "Failed to inspect TileEntity for block '" + entry.name
-                    + "' at ("
-                    + wx
-                    + ","
-                    + wy
-                    + ","
-                    + wz
-                    + "): "
-                    + errorMessage(e),
-                e);
-            return null;
-        }
-    }
-
-    private static TileEntity createTileEntity(WorldServer world, Block block,
-        HybridStructureTemplate.PaletteEntry entry, int wx, int wy, int wz, boolean strict) throws TemplateException {
-        try {
-            TileEntity te = block.createTileEntity(world, entry.meta);
-            if (te != null) {
-                return te;
-            }
-            handleTemplateError(
-                strict,
-                "Block '" + entry.name
-                    + "' (meta "
-                    + entry.meta
-                    + ") returned null from createTileEntity at ("
-                    + wx
-                    + ","
-                    + wy
-                    + ","
-                    + wz
-                    + ")",
-                null);
-            return null;
-        } catch (RuntimeException e) {
-            handleTemplateError(
-                strict,
-                "Failed to create TileEntity for block '" + entry.name
-                    + "' (meta "
-                    + entry.meta
-                    + ") at ("
-                    + wx
-                    + ","
-                    + wy
-                    + ","
-                    + wz
-                    + "): "
-                    + errorMessage(e),
-                e);
-            return null;
-        }
-    }
-
-    private static Chunk getChunk(WorldServer world, int wx, int wz, HybridStructureTemplate.PaletteEntry entry,
-        boolean strict) throws TemplateException {
-        try {
-            return world.getChunkFromChunkCoords(wx >> 4, wz >> 4);
-        } catch (RuntimeException e) {
-            handleTemplateError(
-                strict,
-                "Failed to resolve chunk for TileEntity block '" + entry.name
-                    + "' at ("
-                    + wx
-                    + ","
-                    + wz
-                    + "): "
-                    + errorMessage(e),
-                e);
-            return null;
         }
     }
 

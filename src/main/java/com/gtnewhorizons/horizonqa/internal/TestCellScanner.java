@@ -18,41 +18,27 @@ final class TestCellScanner {
 
     private TestCellScanner() {}
 
-    static void preClear(WorldServer world, int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
-        GridSweeper.clear(world, minX, minY, minZ, maxX, maxY, maxZ);
+    static void preClear(WorldServer world, BlockPos pos1, BlockPos pos2) {
+        GridSweeper.clear(world, pos1, pos2);
     }
 
-    static void preClearWithMargin(WorldServer world, int cellMinX, int cellMinY, int cellMinZ, int cellMaxX,
-        int cellMaxY, int cellMaxZ) {
-        int minX = cellMinX - OUTER_MARGIN;
-        int minY = Math.max(0, cellMinY - OUTER_MARGIN);
-        int minZ = cellMinZ - OUTER_MARGIN;
-        int maxX = cellMaxX + OUTER_MARGIN;
-        int maxY = cellMaxY + OUTER_MARGIN;
-        int maxZ = cellMaxZ + OUTER_MARGIN;
-        GridSweeper.clear(world, minX, minY, minZ, maxX, maxY, maxZ);
+    static void preClearWithMargin(WorldServer world, BlockPos cellMin, BlockPos cellMax) {
+        GridSweeper.clear(world,
+            new BlockPos(cellMin.getX() - OUTER_MARGIN, Math.max(0, cellMin.getY() - OUTER_MARGIN), cellMin.getZ() - OUTER_MARGIN),
+            new BlockPos(cellMax.getX() - OUTER_MARGIN, cellMax.getY() - OUTER_MARGIN, cellMax.getZ() - OUTER_MARGIN));
     }
 
-    static void registerIsolationCheck(GameTestInstance inst, WorldServer world, int cellMinX, int cellMinY,
-        int cellMinZ, int cellMaxX, int cellMaxY, int cellMaxZ, int tmplMinX, int tmplMinY, int tmplMinZ, int tmplMaxX,
-        int tmplMaxY, int tmplMaxZ, boolean hasTemplate) {
+    static void registerIsolationCheck(GameTestInstance inst, WorldServer world, BlockPos cellMin, BlockPos cellMax,
+                                    BlockPos tmplMin, BlockPos tmplMax, boolean hasTemplate) {
 
         inst.addCleanup(() -> {
             if (hasTemplate) {
                 List<String> extra = scanCellPadding(
                     world,
-                    cellMinX,
-                    cellMinY,
-                    cellMinZ,
-                    cellMaxX,
-                    cellMaxY,
-                    cellMaxZ,
-                    tmplMinX,
-                    tmplMinY,
-                    tmplMinZ,
-                    tmplMaxX,
-                    tmplMaxY,
-                    tmplMaxZ);
+                    cellMin,
+                    cellMax,
+                    tmplMin,
+                    tmplMax);
                 for (String pos : extra) {
                     inst.addWarning("Block outside template footprint: " + pos);
                 }
@@ -61,38 +47,31 @@ final class TestCellScanner {
             if (Loader.isModLoaded("gregtech_nh")) {
                 List<String> leaked = scanOuterMarginForIGTE(
                     world,
-                    cellMinX,
-                    cellMinY,
-                    cellMinZ,
-                    cellMaxX,
-                    cellMaxY,
-                    cellMaxZ);
+                    cellMin,
+                    cellMax);
                 if (!leaked.isEmpty()) {
                     throw new TestIsolationViolation(
                         inst.getDefinition()
                             .getTestId(),
                         leaked,
-                        cellMinX,
-                        cellMinY,
-                        cellMinZ);
+                        cellMin);
                 }
             }
         });
     }
 
-    private static List<String> scanCellPadding(WorldServer world, int cellMinX, int cellMinY, int cellMinZ,
-        int cellMaxX, int cellMaxY, int cellMaxZ, int tmplMinX, int tmplMinY, int tmplMinZ, int tmplMaxX, int tmplMaxY,
-        int tmplMaxZ) {
+    private static List<String> scanCellPadding(WorldServer world, BlockPos cellMin, BlockPos cellMax,
+                                                BlockPos tmplMin, BlockPos tmplMax) {
 
         List<String> result = new ArrayList<>();
-        for (int x = cellMinX; x <= cellMaxX; x++) {
-            for (int y = cellMinY; y <= cellMaxY; y++) {
-                for (int z = cellMinZ; z <= cellMaxZ; z++) {
-                    if (x >= tmplMinX && x <= tmplMaxX
-                        && y >= tmplMinY
-                        && y <= tmplMaxY
-                        && z >= tmplMinZ
-                        && z <= tmplMaxZ) continue;
+        for (int x = cellMin.getX(); x <= cellMax.getX(); x++) {
+            for (int y = cellMin.getY(); y <= cellMax.getY(); y++) {
+                for (int z = cellMin.getZ(); z <= cellMax.getZ(); z++) {
+                    if (x >= tmplMin.getX() && x <= tmplMax.getX()
+                        && y >= tmplMin.getY()
+                        && y <= tmplMax.getY()
+                        && z >= tmplMin.getZ()
+                        && z <= tmplMax.getZ()) continue;
                     if (!world.isAirBlock(new BlockPos(x, y, z))) {
                         result.add("(" + x + ", " + y + ", " + z + ")");
                     }
@@ -103,25 +82,24 @@ final class TestCellScanner {
     }
 
     @Optional.Method(modid = "gregtech_nh")
-    private static List<String> scanOuterMarginForIGTE(WorldServer world, int cellMinX, int cellMinY, int cellMinZ,
-        int cellMaxX, int cellMaxY, int cellMaxZ) {
+    private static List<String> scanOuterMarginForIGTE(WorldServer world, BlockPos cellMin, BlockPos cellMax) {
 
         List<String> result = new ArrayList<>();
-        int minX = cellMinX - OUTER_MARGIN;
-        int minY = Math.max(0, cellMinY - OUTER_MARGIN);
-        int minZ = cellMinZ - OUTER_MARGIN;
-        int maxX = cellMaxX + OUTER_MARGIN;
-        int maxY = cellMaxY + OUTER_MARGIN;
-        int maxZ = cellMaxZ + OUTER_MARGIN;
+        int minX = cellMin.getX() - OUTER_MARGIN;
+        int minY = Math.max(0, cellMin.getY() - OUTER_MARGIN);
+        int minZ = cellMin.getZ() - OUTER_MARGIN;
+        int maxX = cellMax.getX() + OUTER_MARGIN;
+        int maxY = cellMax.getY() + OUTER_MARGIN;
+        int maxZ = cellMax.getZ() + OUTER_MARGIN;
 
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
-                    if (x >= cellMinX && x <= cellMaxX
-                        && y >= cellMinY
-                        && y <= cellMaxY
-                        && z >= cellMinZ
-                        && z <= cellMaxZ) continue;
+                    if (x >= cellMin.getX() && x <= cellMax.getX()
+                        && y >= cellMin.getY()
+                        && y <= cellMax.getY()
+                        && z >= cellMin.getZ()
+                        && z <= cellMax.getZ()) continue;
                     TileEntity te = world.getTileEntity(new BlockPos(x, y, z));
                     if (te instanceof IGregTechTileEntity) {
                         result.add("(" + x + ", " + y + ", " + z + ")");

@@ -1,5 +1,7 @@
 package com.gtnewhorizons.horizonqa.internal;
 
+import net.minecraft.util.math.BlockPos;
+
 public class GameTestGridLayout {
 
     static final int DEFAULT_CELL_SIZE = 5;
@@ -12,7 +14,7 @@ public class GameTestGridLayout {
     private int rowMaxDepth = DEFAULT_CELL_SIZE + INTER_CELL_GAP;
     private int rowCount = 0;
 
-    public int[] allocateOrigin(int templateSizeX, int templateSizeZ) {
+    public BlockPos allocateOrigin(int templateSizeX, int templateSizeZ) {
         int cellW = Math.max(templateSizeX, DEFAULT_CELL_SIZE) + INTER_CELL_GAP;
         int cellD = Math.max(templateSizeZ, DEFAULT_CELL_SIZE) + INTER_CELL_GAP;
 
@@ -30,10 +32,10 @@ public class GameTestGridLayout {
         if (cellD > rowMaxDepth) rowMaxDepth = cellD;
         rowCount++;
 
-        return new int[] { x, ORIGIN_Y, z };
+        return new BlockPos(x, ORIGIN_Y, z);
     }
 
-    public int[] allocateOrigin() {
+    public BlockPos allocateOrigin() {
         return allocateOrigin(0, 0);
     }
 

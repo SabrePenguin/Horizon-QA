@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
+import net.minecraft.util.math.BlockPos;
 
 /**
  * Thrown at test teardown when an {@code IGregTechTileEntity} is found outside the test cell. The leaking test itself
@@ -15,8 +16,8 @@ public class TestIsolationViolation extends GameTestAssertException {
 
     private final List<String> leakedPositions;
 
-    public TestIsolationViolation(String testId, List<String> leakedPositions, int x, int y, int z) {
-        super(buildMessage(testId, leakedPositions), x, y, z);
+    public TestIsolationViolation(String testId, List<String> leakedPositions, BlockPos pos) {
+        super(buildMessage(testId, leakedPositions), pos);
         this.leakedPositions = Collections.unmodifiableList(new ArrayList<>(leakedPositions));
     }
 

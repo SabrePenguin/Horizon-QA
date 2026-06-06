@@ -5,7 +5,6 @@ import java.util.Collection;
 import com.github.bsideup.jabel.Desugar;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 
 public final class HorizonQACommandUtils {
@@ -109,7 +108,7 @@ public final class HorizonQACommandUtils {
     }
 
     @Desugar
-    public record CellRecord(String testId, int originX, int originY, int originZ, BlockPos minPos,
+    public record CellRecord(String testId, BlockPos origin, BlockPos minPos,
                              BlockPos maxPos) {
 
         public boolean posInsideCell(BlockPos pos) {
