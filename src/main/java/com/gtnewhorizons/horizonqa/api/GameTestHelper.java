@@ -26,7 +26,6 @@ import net.minecraftforge.fluids.FluidStack;
 
 import com.gtnewhorizons.horizonqa.api.annotation.Experimental;
 import com.gtnewhorizons.horizonqa.api.event.EventLog;
-import com.gtnewhorizons.horizonqa.api.gt.GTNHGameTestHelper;
 import com.gtnewhorizons.horizonqa.internal.GameTestInstance;
 import com.gtnewhorizons.horizonqa.internal.GameTestSequence;
 import com.mojang.authlib.GameProfile;
@@ -51,7 +50,6 @@ public class GameTestHelper {
     private final int originX;
     private final int originY;
     private final int originZ;
-    private GTNHGameTestHelper gtnh;
     private final BlockPos origin;
 
     public GameTestHelper(GameTestInstance instance, WorldServer world, BlockPos origin) {
@@ -1217,23 +1215,5 @@ public class GameTestHelper {
         IBlockState state = world.getBlockState(absolute);
         Block block = state.getBlock();
         block.onBlockClicked(world, absolute, player);
-    }
-
-    /**
-     * Return the GTNH-specific helper that provides GregTech machine assertions, EU supply,
-     * time-warp, and fluid-hatch utilities. The helper is created lazily on first call and
-     * reused on subsequent calls within the same test instance.
-     *
-     * @throws IllegalStateException if GT5-Unofficial (mod ID {@code gregtech}) is not loaded
-     */
-    public GTNHGameTestHelper gtnh() {
-        if (gtnh == null) {
-            if (!Loader.isModLoaded("gregtech")) {
-                throw new IllegalStateException(
-                    "GT5-Unofficial (mod ID 'gregtech') is not loaded. Cannot use GTNHGameTestHelper.");
-            }
-            gtnh = new GTNHGameTestHelper(this, world, originX, originY, originZ);
-        }
-        return gtnh;
     }
 }

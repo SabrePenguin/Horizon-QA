@@ -41,7 +41,7 @@ dependencies {
     //runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.93-GTNH:dev")
 
 //    compileOnly(rfg.deobf("curse.maven:gregtech-ce-unofficial-557242:5519022"))
-    compileOnly("gregtech:gregtech:2.8.10-beta:dev")
+//    compileOnly("gregtech:gregtech:2.8.10-beta:dev")
 
     testImplementation("junit:junit:4.13.2")
 }
