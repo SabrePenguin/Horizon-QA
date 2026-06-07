@@ -30,7 +30,6 @@ import com.gtnewhorizons.horizonqa.internal.GameTestInstance;
 import com.gtnewhorizons.horizonqa.internal.GameTestSequence;
 import com.mojang.authlib.GameProfile;
 import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.wrapper.InvWrapper;

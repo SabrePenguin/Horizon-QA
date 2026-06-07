@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.github.bsideup.jabel.Desugar;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
@@ -23,10 +24,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.gtnewhorizons.horizonqa.HorizonQAMod;
-import com.gtnewhorizons.horizonqa.api.gt.GTNHGameTestHelper;
 import com.gtnewhorizons.horizonqa.command.HorizonQACommandUtils.CellRecord;
-import com.gtnewhorizons.horizonqa.structure.HybridStructureLoader;
-import com.gtnewhorizons.horizonqa.structure.HybridStructureTemplate;
 import com.gtnewhorizons.horizonqa.structure.StructurePlacer;
 import com.gtnewhorizons.horizonqa.structure.TemplateException;
 
@@ -86,13 +84,9 @@ public class InteractiveTestSession {
 
         ensureRunnerRegistered();
         for (PlannedTest plannedTest : planned) {
-            Template template = loadTemplate(def);
-            BlockPos size = template != null ? template.getSize(): new BlockPos(0, 0, 0);
-            BlockPos origin = grid.allocateOrigin(size.getX(), size.getZ());
             GameTestInstance inst = spawnPlannedTest(plannedTest, world);
-            GameTestInstance inst = spawnTestAt(def, world, origin, template);
             runner.addInstance(inst);
-            LOG.info("[GameTest] Launched '{}' at {}.", plannedTest.def.getTestId(), origin);
+            LOG.info("[GameTest] Launched '{}' at {}.", plannedTest.def.getTestId(), plannedTest.origin);
         }
         LOG.info("[GameTest] Launched {} test(s) total.", defs.size());
         return planned.size();
@@ -107,13 +101,12 @@ public class InteractiveTestSession {
             return launchTest(def) > 0;
         }
 
-        PlannedTest plannedTest = planTestAt(def, existing.originX, existing.originY, existing.originZ);
+        PlannedTest plannedTest = planTestAt(def, existing.origin());
         if (!forcePlannedArea(world, Collections.singletonList(plannedTest))) {
             return false;
         }
         ensureRunnerRegistered();
         Template template = loadTemplate(def);
-        GameTestInstance inst = spawnTestAt(def, world, existing.origin(), template);
         GameTestInstance inst = spawnPlannedTest(plannedTest, world);
         runner.addInstance(inst);
         LOG.info(
@@ -181,7 +174,7 @@ public class InteractiveTestSession {
         return planTestAt(def, origin, loadTemplate(def));
     }
 
-    private PlannedTest planTestAt(GameTestDefinition def, WorldServer world, BlockPos origin, Template template) {
+    private PlannedTest planTestAt(GameTestDefinition def, BlockPos origin, Template template) {
         BlockPos size = template != null ? template.getSize() : new BlockPos(0, 0, 0);
 
         BlockPos cellSize = new BlockPos(
@@ -201,9 +194,11 @@ public class InteractiveTestSession {
             def,
             template,
             origin,
+            size,
             cellMin,
             cellMax);
     }
+
     private static boolean forcePlannedArea(WorldServer world, List<PlannedTest> planned) {
         if (planned.isEmpty()) return true;
 
@@ -214,16 +209,16 @@ public class InteractiveTestSession {
         int maxY = Integer.MIN_VALUE;
         int maxZ = Integer.MIN_VALUE;
         for (PlannedTest plannedTest : planned) {
-            minX = Math.min(minX, plannedTest.cellMinX - GameTestGridLayout.INTER_CELL_GAP);
-            minY = Math.min(minY, Math.max(0, plannedTest.cellMinY - GameTestGridLayout.INTER_CELL_GAP));
-            minZ = Math.min(minZ, plannedTest.cellMinZ - GameTestGridLayout.INTER_CELL_GAP);
-            maxX = Math.max(maxX, plannedTest.cellMaxX + GameTestGridLayout.INTER_CELL_GAP);
-            maxY = Math.max(maxY, plannedTest.cellMaxY + GameTestGridLayout.INTER_CELL_GAP);
-            maxZ = Math.max(maxZ, plannedTest.cellMaxZ + GameTestGridLayout.INTER_CELL_GAP);
+            minX = Math.min(minX, plannedTest.cellMin.getX() - GameTestGridLayout.INTER_CELL_GAP);
+            minY = Math.min(minY, Math.max(0, plannedTest.cellMin.getY() - GameTestGridLayout.INTER_CELL_GAP));
+            minZ = Math.min(minZ, plannedTest.cellMin.getZ() - GameTestGridLayout.INTER_CELL_GAP);
+            maxX = Math.max(maxX, plannedTest.cellMax.getX() + GameTestGridLayout.INTER_CELL_GAP);
+            maxY = Math.max(maxY, plannedTest.cellMax.getY() + GameTestGridLayout.INTER_CELL_GAP);
+            maxZ = Math.max(maxZ, plannedTest.cellMax.getZ() + GameTestGridLayout.INTER_CELL_GAP);
         }
 
         try {
-            HorizonQAMod.CHUNK_LOADER.forceChunksStrict(world, minX, minY, minZ, maxX, maxY, maxZ);
+            HorizonQAMod.CHUNK_LOADER.forceChunksStrict(world, new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ));
             LOG.info(
                 "[GameTest] Loaded test area ({}, {}, {}) -> ({}, {}, {}) for {} test(s).",
                 minX,
@@ -241,105 +236,45 @@ public class InteractiveTestSession {
     }
     private GameTestInstance spawnPlannedTest(PlannedTest plannedTest, WorldServer world) {
         GameTestDefinition def = plannedTest.def;
-        HybridStructureTemplate template = plannedTest.template;
-        int originX = plannedTest.originX;
-        int originY = plannedTest.originY;
-        int originZ = plannedTest.originZ;
+        Template template = plannedTest.template;
+        BlockPos origin = plannedTest.origin;
 
         TestCellScanner.preClearWithMargin(
             world,
-            plannedTest.cellMinX,
-            plannedTest.cellMinY,
-            plannedTest.cellMinZ,
-            plannedTest.cellMaxX,
-            plannedTest.cellMaxY,
-            plannedTest.cellMaxZ);
+            plannedTest.cellMin,
+            plannedTest.cellMax);
 
         if (template != null) {
             StructurePlacer.place(
                 template,
                 world,
-                originX,
-                originY,
-                originZ,
-                def.getRotation(),
-                GTNHGameTestHelper::rotateStructureTileNbt);
-        }
-
-        CellRecord cell = new CellRecord(
-            def.getTestId(),
-            originX,
-            originY,
-            originZ,
-            plannedTest.cellMinX,
-            plannedTest.cellMinY,
-            plannedTest.cellMinZ,
-            plannedTest.cellMaxX,
-            plannedTest.cellMaxY,
-            plannedTest.cellMaxZ);
-        knownCells.put(def.getTestId(), cell);
-
-        GameTestInstance inst = new GameTestInstance(def, originX, originY, originZ);
-
-        int tmplMaxX = plannedTest.sizeX > 0 ? originX + plannedTest.sizeX - 1 : -1;
-        int tmplMaxY = plannedTest.sizeY > 0 ? originY + plannedTest.sizeY - 1 : -1;
-        int tmplMaxZ = plannedTest.sizeZ > 0 ? originZ + plannedTest.sizeZ - 1 : -1;
-
-        TestCellScanner.preClear(world, cellMin, cellMax);
-
-        if (template != null) {
-            StructurePlacer.place(template, world, origin);
+                origin,
+                def.getRotation());
         }
 
         CellRecord cell = new CellRecord(
             def.getTestId(),
             origin,
-            cellMin,
-            cellMax);
+            plannedTest.cellMin,
+            plannedTest.cellMax);
         knownCells.put(def.getTestId(), cell);
 
         GameTestInstance inst = new GameTestInstance(def, origin);
-
-        int tmplMaxX = plannedTest.sizeX > 0 ? originX + plannedTest.sizeX - 1 : -1;
-        int tmplMaxY = plannedTest.sizeY > 0 ? originY + plannedTest.sizeY - 1 : -1;
-        int tmplMaxZ = plannedTest.sizeZ > 0 ? originZ + plannedTest.sizeZ - 1 : -1;
-        BlockPos templateMax = new BlockPos(
-            size.getX() > 0 ? origin.getX() + size.getX() - 1 : -1,
-            size.getY() > 0 ? origin.getY() + size.getY() - 1 : -1,
-            size.getZ() > 0 ? origin.getZ() + size.getZ() - 1 : -1
+        BlockPos tmplMax = new BlockPos(
+            plannedTest.size.getX() > 0 ? origin.getX() + plannedTest.size.getX() - 1 : -1,
+            plannedTest.size.getY() > 0 ? origin.getY() + plannedTest.size.getY() - 1 : -1,
+            plannedTest.size.getZ() > 0 ? origin.getZ() + plannedTest.size.getZ() - 1 : -1
         );
-        TestCellScanner.registerIsolationCheck(
-            inst,
-            world,
-            cellMin,
-            cellMax,
-            origin,
-            templateMax,
-            template != null);
 
         inst.start(world);
         lastInstances.put(def.getTestId(), inst);
         return inst;
     }
 
-    private static final class PlannedTest {
+    @Desugar
+    private record PlannedTest(GameTestDefinition def, Template template, BlockPos origin, BlockPos size,
+                               BlockPos cellMin, BlockPos cellMax) {
 
-        final GameTestDefinition def;
-        final HybridStructureTemplate template;
-        final BlockPos origin;
-        final BlockPos size;
-        final BlockPos cellMin;
-        final BlockPos cellMax;
-
-        PlannedTest(GameTestDefinition def, HybridStructureTemplate template, BlockPos origin,
-            BlockPos size, BlockPos cellMin, BlockPos cellMax) {
-            this.def = def;
-            this.template = template;
-            this.origin = origin;
-            this.size = size;
-            this.cellMin = cellMin;
-            this.cellMax = cellMax;
-        }
     }
 
     private static void clearCell(WorldServer world, CellRecord cell) {

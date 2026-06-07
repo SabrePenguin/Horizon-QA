@@ -1,5 +1,7 @@
 package com.gtnewhorizons.horizonqa.api.annotation;
 
+import net.minecraft.util.Rotation;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -29,5 +31,5 @@ public @interface GameTest {
      * Structure rotation: 0 = none, 1 = 90° clockwise, 2 = 180°, 3 = 270° clockwise (Y axis), matching
      * Minecraft structure placement conventions.
      */
-    int rotation() default 0;
+    Rotation rotation() default Rotation.NONE;
 }

@@ -57,7 +57,7 @@ public final class GameTestChunkLoader implements ForgeChunkManager.OrderedLoadi
                     if (cps != null) {
                         cps.loadChunk(cx, cz);
                     }
-                    ForgeChunkManager.forceChunk(ticket, new ChunkCoordIntPair(cx, cz));
+                    ForgeChunkManager.forceChunk(ticket, new ChunkPos(cx, cz));
 
                     cz++;
                     if (cz > chunkZ2) {

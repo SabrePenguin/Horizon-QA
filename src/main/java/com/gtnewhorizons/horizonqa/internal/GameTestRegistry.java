@@ -191,16 +191,6 @@ public final class GameTestRegistry {
                         + clazz.getName()
                         + "': timeoutTicks must be greater than 0."));
         }
-        if (testAnn.rotation() < 0 || testAnn.rotation() > 3) {
-            issues.add(
-                issue(
-                    "discovery:invalidTest:" + methodRef(method) + ":rotation",
-                    KIND_DISCOVERY_ERROR,
-                    "Skipping @GameTest method '" + method.getName()
-                        + "' in '"
-                        + clazz.getName()
-                        + "': rotation must be between 0 and 3."));
-        }
 
         String intendedTestId = intendedTestId(namespace, clazz, method);
         if (!issues.isEmpty()) {

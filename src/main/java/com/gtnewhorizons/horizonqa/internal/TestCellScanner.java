@@ -3,14 +3,8 @@ package com.gtnewhorizons.horizonqa.internal;
 import java.util.ArrayList;
 import java.util.List;
 
-import gregtech.api.metatileentity.interfaces.IGregTechTileEntity;
-import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
-
-import com.gtnewhorizons.horizonqa.api.TestIsolationViolation;
-import net.minecraftforge.fml.common.Loader;
-import net.minecraftforge.fml.common.Optional;
 
 final class TestCellScanner {
 
@@ -43,20 +37,6 @@ final class TestCellScanner {
                     inst.addWarning("Block outside template footprint: " + pos);
                 }
             }
-
-            if (Loader.isModLoaded("gregtech_nh")) {
-                List<String> leaked = scanOuterMarginForIGTE(
-                    world,
-                    cellMin,
-                    cellMax);
-                if (!leaked.isEmpty()) {
-                    throw new TestIsolationViolation(
-                        inst.getDefinition()
-                            .getTestId(),
-                        leaked,
-                        cellMin);
-                }
-            }
         });
     }
 
@@ -73,35 +53,6 @@ final class TestCellScanner {
                         && z >= tmplMin.getZ()
                         && z <= tmplMax.getZ()) continue;
                     if (!world.isAirBlock(new BlockPos(x, y, z))) {
-                        result.add("(" + x + ", " + y + ", " + z + ")");
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    @Optional.Method(modid = "gregtech_nh")
-    private static List<String> scanOuterMarginForIGTE(WorldServer world, BlockPos cellMin, BlockPos cellMax) {
-
-        List<String> result = new ArrayList<>();
-        int minX = cellMin.getX() - OUTER_MARGIN;
-        int minY = Math.max(0, cellMin.getY() - OUTER_MARGIN);
-        int minZ = cellMin.getZ() - OUTER_MARGIN;
-        int maxX = cellMax.getX() + OUTER_MARGIN;
-        int maxY = cellMax.getY() + OUTER_MARGIN;
-        int maxZ = cellMax.getZ() + OUTER_MARGIN;
-
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-                for (int z = minZ; z <= maxZ; z++) {
-                    if (x >= cellMin.getX() && x <= cellMax.getX()
-                        && y >= cellMin.getY()
-                        && y <= cellMax.getY()
-                        && z >= cellMin.getZ()
-                        && z <= cellMax.getZ()) continue;
-                    TileEntity te = world.getTileEntity(new BlockPos(x, y, z));
-                    if (te instanceof IGregTechTileEntity) {
                         result.add("(" + x + ", " + y + ", " + z + ")");
                     }
                 }

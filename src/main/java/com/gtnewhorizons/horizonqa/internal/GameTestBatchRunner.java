@@ -16,6 +16,7 @@ import java.util.TreeMap;
 
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.Rotation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
@@ -28,7 +29,6 @@ import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizons.horizonqa.HorizonQAMod;
 import com.gtnewhorizons.horizonqa.HorizonQAProperties;
 import com.gtnewhorizons.horizonqa.api.event.StructurePlaced;
-import com.gtnewhorizons.horizonqa.api.gt.GTNHGameTestHelper;
 import com.gtnewhorizons.horizonqa.internal.InvalidBatchHook.HookPhase;
 import com.gtnewhorizons.horizonqa.report.CaseResult;
 import com.gtnewhorizons.horizonqa.report.ConsoleReporter;
@@ -130,7 +130,7 @@ public class GameTestBatchRunner {
                 continue;
             }
             if (p.template != null) {
-                StructurePlacer.place(p.template, world, p.origin);
+                StructurePlacer.place(p.template, world, p.origin, Rotation.NONE);
             }
         }
 
@@ -143,7 +143,7 @@ public class GameTestBatchRunner {
             GameTestInstance inst = new GameTestInstance(p.def, p.origin);
             if (p.template != null) {
                 final String templateName = p.def.getTemplateName();
-                final int sx = p.templateSize.getX(), sy = p.templateSize.getY(), sz = p.templateSize.getZ();
+                final int sx = p.tmplSize.getX(), sy = p.tmplSize.getY(), sz = p.tmplSize.getZ();
                 final BlockPos origin = new BlockPos(p.origin);
                 TestEventRecorder rec = inst.getRecorder();
                 rec.record(
@@ -157,9 +157,9 @@ public class GameTestBatchRunner {
                         sz));
             }
 
-            BlockPos templateMax = new BlockPos(p.templateSize.getX() > 0 ? p.origin.getX() + p.templateSize.getX() - 1 : -1,
-                p.templateSize.getY() > 0 ? p.origin.getY() + p.templateSize.getY() - 1 : -1,
-                p.templateSize.getZ() > 0 ? p.origin.getZ() + p.templateSize.getZ() - 1 : -1);
+            BlockPos templateMax = new BlockPos(p.tmplSize.getX() > 0 ? p.origin.getX() + p.tmplSize.getX() - 1 : -1,
+                p.tmplSize.getY() > 0 ? p.origin.getY() + p.tmplSize.getY() - 1 : -1,
+                p.tmplSize.getZ() > 0 ? p.origin.getZ() + p.tmplSize.getZ() - 1 : -1);
             TestCellScanner.registerIsolationCheck(
                 inst,
                 world,
@@ -327,7 +327,8 @@ public class GameTestBatchRunner {
             origin,
             size.toImmutable(),
             cellMin,
-            cellMax);
+            cellMax,
+            null);
     }
 
     private BlockPos addPos(BlockPos origin, BlockPos size) {
@@ -523,33 +524,23 @@ public class GameTestBatchRunner {
         }
     }
 
-
-    private static final class PlannedTest {
-
-        final GameTestDefinition def;
-        final Template template;
-        final BlockPos origin;
-        final BlockPos templateSize;
-        final BlockPos cellMin;
-        final BlockPos cellMax;
-        CaseResult templateError;
+    @Desugar
+    private record PlannedTest(GameTestDefinition def, Template template, BlockPos origin, BlockPos tmplSize,
+                                      BlockPos cellMin, BlockPos cellMax, CaseResult templateError) {
 
         static PlannedTest templateError(GameTestDefinition def, CaseResult result) {
-            return new PlannedTest(def, null, new BlockPos(0, 0, 0), new BlockPos(0, 0, 0), new BlockPos(0, 0, 0), new BlockPos(0, 0, 0), result);
+            return new PlannedTest(
+                def,
+                null,
+                new BlockPos(0, 0, 0),
+                new BlockPos(0, 0, 0),
+                new BlockPos(0, 0, 0),
+                new BlockPos(0, 0, 0),
+                result);
         }
 
         boolean hasTemplateError() {
             return templateError != null;
-        }
-
-        PlannedTest(GameTestDefinition def, Template template, BlockPos origin, BlockPos templateSize,
-                    BlockPos cellMin, BlockPos cellMax) {
-            this.def = def;
-            this.template = template;
-            this.origin = origin;
-            this.templateSize = templateSize;
-            this.cellMin = cellMin;
-            this.cellMax = cellMax;
         }
 
         PlannedTest withTemplateError(CaseResult result) {
@@ -557,10 +548,10 @@ public class GameTestBatchRunner {
                 def,
                 template,
                 origin,
-                templateSize,
+                tmplSize,
                 cellMin,
-                cellMax
-//                result
+                cellMax,
+                result
             );
         }
 

@@ -1,5 +1,7 @@
 package com.gtnewhorizons.horizonqa.internal;
 
+import net.minecraft.util.Rotation;
+
 import java.lang.reflect.Method;
 
 public final class GameTestDefinition {
@@ -10,10 +12,10 @@ public final class GameTestDefinition {
     private final int timeoutTicks;
     private final String batch;
     private final boolean required;
-    private final int rotation;
+    private final Rotation rotation;
 
     public GameTestDefinition(String testId, Method method, String templateName, int timeoutTicks, String batch,
-        boolean required, int rotation) {
+        boolean required, Rotation rotation) {
         this.testId = testId;
         this.method = method;
         this.templateName = templateName;
@@ -47,7 +49,7 @@ public final class GameTestDefinition {
         return required;
     }
 
-    public int getRotation() {
+    public Rotation getRotation() {
         return rotation;
     }
 

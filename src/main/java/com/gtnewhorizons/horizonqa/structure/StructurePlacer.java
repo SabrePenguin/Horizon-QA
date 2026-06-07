@@ -1,15 +1,11 @@
 package com.gtnewhorizons.horizonqa.structure;
 
 import net.minecraft.block.Block;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.Rotation;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.gen.ChunkProviderServer;
 
 import net.minecraft.world.gen.structure.template.PlacementSettings;
 import net.minecraft.world.gen.structure.template.Template;
@@ -29,9 +25,10 @@ public final class StructurePlacer {
         void rotate(NBTTagCompound nbt, int rotation);
     }
 
-    public static void place(Template template, WorldServer world, BlockPos pos) {
+    public static void place(Template template, WorldServer world, BlockPos pos, Rotation rotation) {
         PlacementSettings settings = new PlacementSettings()
-            .setIgnoreEntities(true);
+            .setIgnoreEntities(true)
+            .setRotation(rotation);
         template.addBlocksToWorld(world, pos, settings, 2);
     }
 
@@ -53,6 +50,14 @@ public final class StructurePlacer {
         };
     }
 
+    public static int placedSizeX(Template template, Rotation rotation) {
+        return rotation == Rotation.CLOCKWISE_90 || rotation == Rotation.COUNTERCLOCKWISE_90 ? template.getSize().getZ() : template.getSize().getX();
+    }
+
+    public static int placedSizeZ(Template template, Rotation rotation) {
+        return rotation == Rotation.CLOCKWISE_90 || rotation == Rotation.COUNTERCLOCKWISE_90 ? template.getSize().getX() : template.getSize().getZ();
+    }
+
     private static int placedSizeX(int sizeX, int sizeZ, int rotation) {
         return (rotation & 1) == 0 ? sizeX : sizeZ;
     }
@@ -68,67 +73,24 @@ public final class StructurePlacer {
         return rotation;
     }
 
-    private static void rotatePlacedBlock(Block block, WorldServer world, int wx, int wy, int wz, String blockName,
+    private static void rotatePlacedBlock(Block block, WorldServer world, BlockPos pos, String blockName,
         int rotation, boolean strict) throws TemplateException {
         if (rotation == 0) {
             return;
         }
         for (int i = 0; i < rotation; i++) {
             try {
-                block.rotateBlock(world, wx, wy, wz, EnumFacing.UP);
+                block.rotateBlock(world, pos, EnumFacing.UP);
             } catch (RuntimeException e) {
                 handleTemplateError(
                     strict,
                     "Failed to rotate block '" + blockName
-                        + "' at ("
-                        + wx
-                        + ","
-                        + wy
-                        + ","
-                        + wz
-                        + "): "
+                        + "' at "
+                        + pos
+                        + ": "
                         + errorMessage(e),
                     e);
                 return;
-            }
-        }
-    }
-
-    private static Block[] resolvePalette(String templateName, HybridStructureTemplate.PaletteEntry[] palette,
-        boolean strict) throws TemplateException {
-        Block[] blocks = new Block[palette.length];
-        for (int i = 0; i < palette.length; i++) {
-            HybridStructureTemplate.PaletteEntry entry = palette[i];
-            Block block = RegistryStringResolver.resolve(entry.name);
-            if (block == null) {
-                handleTemplateError(
-                    strict,
-                    "Unknown block '" + entry.name + "' in template '" + templateName + "' at palette index " + i,
-                    null);
-            }
-            blocks[i] = block;
-        }
-        return blocks;
-    }
-
-    private static void ensureChunksLoaded(WorldServer world, int originX, int originZ, int sizeX, int sizeZ) {
-
-        int chunkMinX = originX >> 4;
-        int chunkMaxX = (originX + sizeX - 1) >> 4;
-        int chunkMinZ = originZ >> 4;
-        int chunkMaxZ = (originZ + sizeZ - 1) >> 4;
-
-        if (world.getChunkProvider() instanceof ChunkProviderServer cps) {
-            for (int cx = chunkMinX; cx <= chunkMaxX; cx++) {
-                for (int cz = chunkMinZ; cz <= chunkMaxZ; cz++) {
-                    cps.loadChunk(cx, cz);
-                }
-            }
-        } else {
-            for (int cx = chunkMinX; cx <= chunkMaxX; cx++) {
-                for (int cz = chunkMinZ; cz <= chunkMaxZ; cz++) {
-                    world.getChunk(cx, cz);
-                }
             }
         }
     }
