@@ -1,8 +1,7 @@
 package com.gtnewhorizons.horizonqa.internal;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -284,9 +283,26 @@ public class InteractiveTestSession {
     private static Template loadTemplate(GameTestDefinition def) {
         if (def.getTemplateName()
             .isEmpty()) return null;
-        File input = new File(def.getTemplateName());
-        try (FileInputStream fis = new FileInputStream(input)){
-            NBTTagCompound rootNBT = CompressedStreamTools.readCompressed(fis);
+        String[] parts = def.getTemplateName().split(":", 2);
+        try {
+            if (parts.length != 2) {
+                throw new TemplateException("Invalid template name (expected 'namespace:path'): " + def.getTemplateName());
+            }
+        } catch (IOException e) {
+            LOG.error(
+                "[GameTest] Failed to load template '{}' for test '{}': {}",
+                def.getTemplateName(),
+                def.getTestId(),
+                e.getMessage());
+            return null;
+        }
+        String namespace = parts[0];
+        String path = parts[1];
+        String jsonResource = "/assets/" + namespace + "/horizonqastructures/" + path;
+        try (InputStream reader = HorizonQAMod.class.getResourceAsStream(jsonResource)) {
+            if (reader == null)
+                throw new IOException("Unable to open " + jsonResource);
+            NBTTagCompound rootNBT = CompressedStreamTools.readCompressed(reader);
             Template template = new Template();
             template.read(rootNBT);
             return template;
