@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import net.minecraft.util.Rotation;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -457,7 +458,7 @@ public class ReporterOutputTest {
             100,
             "",
             true,
-            0);
+            Rotation.NONE);
     }
 
     public static final class TemplateDefinitions {

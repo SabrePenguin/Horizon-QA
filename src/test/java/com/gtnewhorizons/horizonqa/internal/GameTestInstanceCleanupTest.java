@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import java.lang.reflect.Method;
 import java.util.Collections;
 
+import net.minecraft.util.Rotation;
 import org.junit.Test;
 
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
@@ -78,7 +79,7 @@ public class GameTestInstanceCleanupTest {
 
     private static GameTestInstance instance(String id, String methodName) throws Exception {
         Method method = TestDefinitions.class.getMethod(methodName, GameTestHelper.class);
-        GameTestDefinition definition = new GameTestDefinition(id, method, "", 100, "", true, 0);
+        GameTestDefinition definition = new GameTestDefinition(id, method, "", 100, "", true, Rotation.NONE);
         return new GameTestInstance(definition, 0, 0, 0);
     }
 

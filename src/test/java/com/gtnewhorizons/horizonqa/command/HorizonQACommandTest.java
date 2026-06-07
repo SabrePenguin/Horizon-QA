@@ -11,11 +11,15 @@ import java.util.List;
 import java.util.Map;
 
 import net.minecraft.command.ICommandSender;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.ChunkCoordinates;
-import net.minecraft.util.IChatComponent;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.Rotation;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.TextComponentString;
 import net.minecraft.world.World;
 
+import net.minecraftforge.fml.common.FMLCommonHandler;
+import org.jetbrains.annotations.Nullable;
 import org.junit.After;
 import org.junit.Test;
 
@@ -36,7 +40,6 @@ public class HorizonQACommandTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void tabCompletionListsOnlyRunnableTests() throws Exception {
         seedRegistry(
             Collections.singletonList(definition("good:Suite.valid")),
@@ -45,12 +48,12 @@ public class HorizonQACommandTest {
         HorizonQACommand command = new HorizonQACommand();
 
         List<String> runCompletions = command
-            .addTabCompletionOptions(new RecordingSender(), new String[] { "run", "" });
+            .getTabCompletions(FMLCommonHandler.instance().getMinecraftServerInstance(), new RecordingSender(), new String[] { "run", "" }, null);
         assertTrue(runCompletions.contains("good:Suite.valid"));
         assertFalse(runCompletions.contains("bad:Broken.invalid"));
 
         List<String> runAllCompletions = command
-            .addTabCompletionOptions(new RecordingSender(), new String[] { "runall", "" });
+            .getTabCompletions(FMLCommonHandler.instance().getMinecraftServerInstance(), new RecordingSender(), new String[] { "runall", "" }, null);
         assertTrue(runAllCompletions.contains("good"));
         assertFalse(runAllCompletions.contains("bad"));
     }
@@ -64,7 +67,7 @@ public class HorizonQACommandTest {
 
         RecordingSender sender = new RecordingSender();
 
-        new HorizonQACommand().processCommand(sender, new String[] { "run", invalidId });
+        new HorizonQACommand().execute(FMLCommonHandler.instance().getMinecraftServerInstance(), sender, new String[] { "run", invalidId });
 
         String messages = sender.messages();
         assertTrue(messages.contains("Invalid test"));
@@ -74,7 +77,7 @@ public class HorizonQACommandTest {
     }
 
     private static GameTestDefinition definition(String testId) throws Exception {
-        return new GameTestDefinition(testId, dummyMethod(), "", 20, "", true, 0);
+        return new GameTestDefinition(testId, dummyMethod(), "", 20, "", true, Rotation.NONE);
     }
 
     private static InvalidTestDefinition invalid(String testId) throws Exception {
@@ -128,32 +131,37 @@ public class HorizonQACommandTest {
         private final List<String> messages = new ArrayList<>();
 
         @Override
-        public String getCommandSenderName() {
+        public String getName() {
             return "test";
         }
 
         @Override
-        public IChatComponent func_145748_c_() {
-            return new ChatComponentText(getCommandSenderName());
+        public ITextComponent getDisplayName() {
+            return new TextComponentString(getName());
         }
 
         @Override
-        public void addChatMessage(IChatComponent component) {
+        public void sendMessage(ITextComponent component) {
             messages.add(component.getUnformattedText());
         }
 
         @Override
-        public boolean canCommandSenderUseCommand(int permissionLevel, String commandName) {
+        public boolean canUseCommand(int permissionLevel, String commandName) {
             return true;
         }
 
         @Override
-        public ChunkCoordinates getPlayerCoordinates() {
-            return new ChunkCoordinates(0, 0, 0);
+        public BlockPos getPosition() {
+            return new BlockPos(0, 0, 0);
         }
 
         @Override
         public World getEntityWorld() {
+            return null;
+        }
+
+        @Override
+        public @Nullable MinecraftServer getServer() {
             return null;
         }
 

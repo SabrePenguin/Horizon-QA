@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import net.minecraft.util.Rotation;
 import org.junit.Test;
 
 import com.gtnewhorizons.horizonqa.HorizonQAProperties.SelectorType;
@@ -117,7 +118,7 @@ public class GameTestSelectionTest {
             20,
             "",
             true,
-            0);
+            Rotation.NONE);
     }
 
     public static final class DummyTests {

@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import net.minecraft.util.Rotation;
 import org.junit.Test;
 
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
@@ -150,7 +151,7 @@ public class GameTestBatchRunnerTest {
             100,
             "",
             required,
-            0);
+            Rotation.NONE);
     }
 
     public static final class AlphaHooks {
