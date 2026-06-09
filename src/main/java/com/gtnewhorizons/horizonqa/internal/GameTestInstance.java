@@ -16,7 +16,6 @@ import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizons.horizonqa.api.GameTestAssertException;
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
 import com.gtnewhorizons.horizonqa.api.TestIsolationViolation;
-import com.gtnewhorizons.horizonqa.api.TestPos;
 import com.gtnewhorizons.horizonqa.api.event.AssertionFailed;
 import com.gtnewhorizons.horizonqa.api.event.IsolationViolation;
 import com.gtnewhorizons.horizonqa.api.event.TestFinished;
@@ -42,7 +41,7 @@ public class GameTestInstance {
     private final List<String> warnings = new ArrayList<>();
     private final TestEventRecorder recorder = new TestEventRecorder();
 
-    private int failX, failY, failZ;
+    private BlockPos fail;
     private boolean hasFailPosition;
 
     public GameTestInstance(GameTestDefinition definition, int originX, int originY, int originZ) {
@@ -172,9 +171,7 @@ public class GameTestInstance {
         status = GameTestStatus.FAILED;
         failureCause = cause;
         if (cause instanceof GameTestAssertException gae && gae.hasPosition()) {
-            failX = gae.getX();
-            failY = gae.getY();
-            failZ = gae.getZ();
+            fail = gae.getPos();
             hasFailPosition = true;
         }
         final Throwable c = cause;
@@ -182,7 +179,7 @@ public class GameTestInstance {
             String msg = c != null ? String.valueOf(c.getMessage()) : "unknown";
             String type = c != null ? c.getClass()
                 .getName() : "java.lang.AssertionError";
-            TestPos pos = hasFailPosition ? new TestPos(failX, failY, failZ) : null;
+            BlockPos pos = hasFailPosition ? fail : null;
             return new AssertionFailed(
                 recorder.clock()
                     .tick(),
@@ -339,16 +336,8 @@ public class GameTestInstance {
         return hasFailPosition;
     }
 
-    public int getFailX() {
-        return failX;
-    }
-
-    public int getFailY() {
-        return failY;
-    }
-
-    public int getFailZ() {
-        return failZ;
+    public BlockPos getFailPos() {
+        return fail;
     }
 
     public TestEventRecorder getRecorder() {

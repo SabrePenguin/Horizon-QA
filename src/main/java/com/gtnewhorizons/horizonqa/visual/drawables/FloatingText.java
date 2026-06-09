@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.Entity;
 
+import net.minecraft.util.math.BlockPos;
 import org.lwjgl.opengl.GL11;
 
 public final class FloatingText {
@@ -27,11 +28,9 @@ public final class FloatingText {
         List<String> out = new ArrayList<>(lines.length * 2);
         for (String raw : lines) {
             if (raw == null) continue;
-            for (Object chunk : fr.listFormattedStringToWidth(raw, MAX_LINE_PIXEL_WIDTH)) {
-                out.add((String) chunk);
-            }
+            out.addAll(fr.listFormattedStringToWidth(raw, MAX_LINE_PIXEL_WIDTH));
         }
-        return out.toArray(new String[out.size()]);
+        return out.toArray(new String[0]);
     }
 
     public static void render(double wx, double wy, double wz, String[] lines, float scaleMultiplier,
@@ -65,7 +64,7 @@ public final class FloatingText {
         RenderManager manager = mc.getRenderManager();
 
         GlStateManager.pushMatrix();
-        GlStateManager.translate(dx, dy, dz);
+        GlStateManager.translate(wx, wy, wz);
         GlStateManager.rotate(-manager.playerViewY, 0f, 1f, 0f);
         GlStateManager.rotate(manager.playerViewX, 1f, 0f, 0f);
         GlStateManager.scale(-s, -s, s);
@@ -94,7 +93,7 @@ public final class FloatingText {
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             int tw = fr.getStringWidth(line);
-            fr.drawStringWithShadow(line, -tw / 2, i * (fr.FONT_HEIGHT + 1), 0xFFFFFF);
+            fr.drawStringWithShadow(line, (float) -tw / 2, i * (fr.FONT_HEIGHT + 1), 0xFFFFFF);
         }
 
         GlStateManager.enableDepth();
@@ -102,7 +101,7 @@ public final class FloatingText {
         GlStateManager.popMatrix();
     }
 
-    public static void render(double wx, double wy, double wz, String[] lines, float partialTicks) {
-        render(wx, wy, wz, lines, 1.0f, partialTicks);
+    public static void render(BlockPos source, double raise, String[] lines, float partialTicks) {
+        render(source.getX(), source.getY() + raise, source.getZ(), lines, 1.0f, partialTicks);
     }
 }

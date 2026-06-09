@@ -3,11 +3,14 @@ package com.gtnewhorizons.horizonqa.visual;
 import java.util.Collection;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import org.lwjgl.opengl.GL11;
 
 import com.gtnewhorizons.horizonqa.command.HorizonQACommandUtils.CellRecord;
 import com.gtnewhorizons.horizonqa.internal.GameTestInstance;
@@ -53,58 +56,44 @@ public final class GameTestOverlayRenderer {
         if (cells.isEmpty() && VisualManager.getGhosts()
             .isEmpty()) return;
 
-        GL11.glPushMatrix();
-        GL11.glPushAttrib(
-            GL11.GL_ENABLE_BIT | GL11.GL_DEPTH_BUFFER_BIT
-                | GL11.GL_COLOR_BUFFER_BIT
-                | GL11.GL_CURRENT_BIT
-                | GL11.GL_LINE_BIT
-                | GL11.GL_POLYGON_BIT
-                | GL11.GL_TEXTURE_BIT
-                | GL11.GL_HINT_BIT);
+        GlStateManager.pushMatrix();
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
 
-        GL11.glDisable(GL11.GL_LIGHTING);
-        GL11.glDisable(GL11.GL_ALPHA_TEST);
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GlStateManager.translate(-camX, -camY, -camZ);
 
-        GL11.glTranslated(-camX, -camY, -camZ);
-
+        GlStateManager.glLineWidth(1.4f);
+        GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
         for (CellRecord cell : cells) {
             GameTestInstance inst = session.getLastInstance(cell.testId());
             GameTestStatus status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
             if (status == GameTestStatus.NOT_STARTED) continue;
 
             float[] col = statusColor(status);
-
-            HighlightBox.render(
-                cell.minPos(),
-                cell.maxPos(),
-                1.0f,
-                1.0f,
-                1.0f,
-                0.5f);
-
-            double bcx = cell.minPos().getX() - 0.5;
-            double bcy = cell.minPos().getY();
-            double bcz = cell.minPos().getZ() - 0.5;
-            DebugBeacon.render(bcx, bcy, bcz, col[0], col[1], col[2], pt, wt);
+            AxisAlignedBB bounds = toAABB(cell.minPos(), cell.maxPos());
+            RenderGlobal.drawSelectionBoundingBox(bounds, 1, 1, 1, .5f);
+            DebugBeacon.addLocationToList(cell.minPos(), col);
         }
+        GlStateManager.glLineWidth(1);
 
-        for (GhostBlockDiff ghost : VisualManager.getGhosts()) {
-            ghost.render(pt);
-        }
+        DebugBeacon.render(pt, wt);
 
-        for (CellRecord cell : cells) {
+        GlStateManager.disableLighting();
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(
+            GlStateManager.SourceFactor.SRC_ALPHA,
+            GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+            GlStateManager.SourceFactor.ONE,
+            GlStateManager.DestFactor.ZERO
+        );
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableDepth();
+        GlStateManager.depthMask(false);
+
+        for (CellRecord cell: cells) {
             GameTestInstance inst = session.getLastInstance(cell.testId());
             GameTestStatus status = inst != null ? inst.getStatus() : GameTestStatus.NOT_STARTED;
             if (status == GameTestStatus.NOT_STARTED) continue;
-
-            double bcx = cell.minPos().getX() - 0.5;
-            double bcz = cell.minPos().getZ() - 0.5;
-
-            FloatingText.render(bcx, cell.minPos().getY() + TEXT_Y_LIFT, bcz, buildLines(cell.testId(), status, inst), pt);
-
             if (inst.hasFailPosition()) {
                 String failLabel = null;
                 if (inst.getFailureCause() != null) {
@@ -114,13 +103,18 @@ public final class GameTestOverlayRenderer {
                         failLabel = m;
                     }
                 }
-                new GhostBlockDiff(inst.getFailX(), inst.getFailY(), inst.getFailZ(), 1.0f, 0.12f, 0.12f, failLabel)
-                    .render(pt);
+                BlockPos failPos = inst.getFailPos();
+                RenderGlobal.renderFilledBox(new AxisAlignedBB(failPos).grow(0.002), 1, 0.12f, 0.12f, 0.45f);
+                FloatingText.render(failPos.getX() + .5, failPos.getY() + 1.25, failPos.getZ() + .5, new String[] {failLabel}, .5f, pt);
             }
+            FloatingText.render(cell.minPos(), TEXT_Y_LIFT, buildLines(cell.testId(), status, inst), pt);
         }
 
-        GL11.glPopAttrib();
-        GL11.glPopMatrix();
+        GlStateManager.depthMask(true);
+
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        GlStateManager.popMatrix();
     }
 
     private static float[] statusColor(GameTestStatus s) {
@@ -131,6 +125,16 @@ public final class GameTestOverlayRenderer {
             case TIMED_OUT -> COL_TIMEOUT;
             default -> COL_RUNNING;
         };
+    }
+
+    private static AxisAlignedBB toAABB(BlockPos pos1, BlockPos pos2) {
+        int minX = Math.min(pos1.getX(), pos2.getX());
+        int maxX = Math.max(pos1.getX(), pos2.getX()) + 1;
+        int minY = Math.min(pos1.getY(), pos2.getY());
+        int maxY = Math.max(pos1.getY(), pos2.getY()) + 1;
+        int minZ = Math.min(pos1.getZ(), pos2.getZ());
+        int maxZ = Math.max(pos1.getZ(), pos2.getZ()) + 1;
+        return new AxisAlignedBB(new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ));
     }
 
     private static String[] buildLines(String testId, GameTestStatus status, GameTestInstance inst) {
@@ -151,8 +155,9 @@ public final class GameTestOverlayRenderer {
                 String detail = (status == GameTestStatus.ERROR ? "§d" : "§c")
                     + ellipsize(msg, MAX_CELL_FAILURE_CHARS);
                 if (hasPos) {
+                    BlockPos fail = inst.getFailPos();
                     return new String[] { name, statusLine, detail,
-                        String.format("§8%d %d %d§r", inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
+                        String.format("§8%d %d %d§r", fail.getX(), fail.getY(), fail.getZ()) };
                 }
                 return new String[] { name, statusLine, detail };
             }
@@ -160,8 +165,9 @@ public final class GameTestOverlayRenderer {
             String fallback = status == GameTestStatus.ERROR ? "§dCleanup error - see log§r"
                 : "§cNon-assertion error - see log§r";
             if (hasPos) {
+                BlockPos fail = inst.getFailPos();
                 return new String[] { name, statusLine, fallback,
-                    String.format("§8%d %d %d§r", inst.getFailX(), inst.getFailY(), inst.getFailZ()) };
+                    String.format("§8%d %d %d§r", fail.getX(), fail.getY(), fail.getZ()) };
             }
             return new String[] { name, statusLine, fallback };
         }

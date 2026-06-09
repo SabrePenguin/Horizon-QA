@@ -2,27 +2,39 @@ package com.gtnewhorizons.horizonqa.visual.drawables;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.TileEntityBeaconRenderer;
 import net.minecraft.util.ResourceLocation;
 
-import net.minecraft.util.math.MathHelper;
-import org.lwjgl.opengl.GL11;
+import net.minecraft.util.math.BlockPos;
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class DebugBeacon {
 
     private static final ResourceLocation BEAM_TEX = new ResourceLocation("textures/entity/beacon_beam.png");
 
-    private static final float HEIGHT = 200.0f;
+    private static final List<Pair<BlockPos, float[]>> beaconList = new ArrayList<>();
 
     private DebugBeacon() {}
 
-    public static void render(double wx, double wy, double wz, float r, float g, float b, float partialTicks,
-        long worldTime) {
+    public static void render(float partialTicks, long worldTime) {
+        Minecraft.getMinecraft()
+            .getTextureManager()
+            .bindTexture(BEAM_TEX);
+        GlStateManager.enableTexture2D();
+        for (Pair<BlockPos, float[]> beacon: beaconList) {
+            BlockPos pos = beacon.getLeft();
+            TileEntityBeaconRenderer.renderBeamSegment(
+                pos.getX() - .5, pos.getY(), pos.getZ() - .5, partialTicks, 1, worldTime, 0, 256, beacon.getRight()
+            );
+        }
+        GlStateManager.disableTexture2D();
+        beaconList.clear();
+    }
 
-        TileEntityBeaconRenderer.renderBeamSegment(
-            wx, wy, wz, partialTicks, 1, worldTime, 0, 256, new float[] {r, g, b}
-        );
+    public static void addLocationToList(BlockPos location, float[] rgb) {
+        beaconList.add(Pair.of(location, rgb));
     }
 }

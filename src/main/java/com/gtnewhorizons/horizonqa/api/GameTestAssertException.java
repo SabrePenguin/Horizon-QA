@@ -11,7 +11,7 @@ public class GameTestAssertException extends AssertionError {
     public GameTestAssertException(String message, int x, int y, int z) {
         super(message);
         this.position = new BlockPos(x, y, z);
-        this.hasPosition = false;
+        this.hasPosition = true;
     }
 
     public GameTestAssertException(String message, BlockPos pos) {

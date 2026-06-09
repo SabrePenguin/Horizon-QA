@@ -6,6 +6,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.gtnewhorizons.horizonqa.HorizonQAProperties;
 import com.gtnewhorizons.horizonqa.visual.drawables.GhostBlockDiff;
+import net.minecraft.util.math.BlockPos;
 
 public final class VisualManager {
 
@@ -13,14 +14,14 @@ public final class VisualManager {
 
     private VisualManager() {}
 
-    public static void addFailureGhost(int x, int y, int z, String label) {
+    public static void addFailureGhost(BlockPos pos, String label) {
         if (!HorizonQAProperties.isInteractive()) return;
-        GHOSTS.add(new GhostBlockDiff(x, y, z, 1.00f, 0.15f, 0.15f, label));
+        GHOSTS.add(new GhostBlockDiff(pos, 1.00f, 0.15f, 0.15f, label));
     }
 
-    public static void addExpectedGhost(int x, int y, int z, String label) {
+    public static void addExpectedGhost(BlockPos pos, String label) {
         if (!HorizonQAProperties.isInteractive()) return;
-        GHOSTS.add(new GhostBlockDiff(x, y, z, 0.15f, 1.00f, 0.35f, label));
+        GHOSTS.add(new GhostBlockDiff(pos, 0.15f, 1.00f, 0.35f, label));
     }
 
     public static void clearAll() {
