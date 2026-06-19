@@ -18,8 +18,6 @@ import com.gtnewhorizons.horizonqa.internal.GameTestStatus;
 import com.gtnewhorizons.horizonqa.internal.InteractiveTestSession;
 import com.gtnewhorizons.horizonqa.visual.drawables.DebugBeacon;
 import com.gtnewhorizons.horizonqa.visual.drawables.FloatingText;
-import com.gtnewhorizons.horizonqa.visual.drawables.GhostBlockDiff;
-import com.gtnewhorizons.horizonqa.visual.drawables.HighlightBox;
 
 public final class GameTestOverlayRenderer {
 

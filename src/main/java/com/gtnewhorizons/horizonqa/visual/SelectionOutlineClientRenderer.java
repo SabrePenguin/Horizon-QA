@@ -118,7 +118,7 @@ public final class SelectionOutlineClientRenderer {
             } else {
                 pos2 = BlockPos.fromLong(nbt.getLong(ItemHorizonWand.TAG_POS2));
             }
-            AxisAlignedBB bounds = toAABB(pos1, pos2);
+            AxisAlignedBB bounds = toAABB(pos1, pos2).grow(0.01);
 
             float breathe = facePulseModulation(wtime, FACE_PULSE_PERIOD_TICKS);
             float colorScale = clamp01(FACE_COLOR_CENTER + FACE_COLOR_PULSE * breathe);
