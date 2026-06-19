@@ -17,6 +17,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
+import net.minecraft.world.gen.structure.template.Template;
+import net.minecraftforge.fml.common.FMLCommonHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -204,7 +206,7 @@ public class InteractiveTestSession {
 
         if (template != null) {
             try {
-                StructurePlacer.validateVerticalBounds(def.getTemplateName(), originY, sizeY);
+                StructurePlacer.validateVerticalBounds(def.getTemplateName(), origin, size);
             } catch (TemplateException e) {
                 LOG.error(
                     "[GameTest] Cannot place interactive test '{}' at ({}, {}, {}): {}",

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import net.minecraft.nbt.NBTTagCompound;
 
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.gen.structure.template.Template;
 import org.junit.Test;
 
@@ -69,14 +70,14 @@ public class StructurePlacerTest {
 
     @Test
     public void verticalBoundsAllowTemplateEndingAtBuildLimit() throws Exception {
-        StructurePlacer.validateVerticalBounds("horizonqatest:tall", 252, 4);
+        StructurePlacer.validateVerticalBounds("horizonqatest:tall", new BlockPos(0, 252, 0), new BlockPos(0, 4, 0));
     }
 
     @Test
     public void verticalBoundsRejectTemplateAboveBuildLimit() {
         TemplateException error = assertThrows(
             TemplateException.class,
-            () -> StructurePlacer.validateVerticalBounds("horizonqatest:tall", 253, 4));
+            () -> StructurePlacer.validateVerticalBounds("horizonqatest:tall", new BlockPos(0, 253, 0), new BlockPos(0, 4, 0)));
 
         assertTrue(
             error.getMessage()
@@ -90,7 +91,7 @@ public class StructurePlacerTest {
     public void verticalBoundsRejectTemplateBelowBuildLimit() {
         TemplateException error = assertThrows(
             TemplateException.class,
-            () -> StructurePlacer.validateVerticalBounds("horizonqatest:tall", -1, 1));
+            () -> StructurePlacer.validateVerticalBounds("horizonqatest:tall", new BlockPos(0, -1, 0), new BlockPos(0, 1, 0)));
 
         assertTrue(
             error.getMessage()

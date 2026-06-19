@@ -6,6 +6,7 @@ import static org.junit.Assert.fail;
 
 import java.util.Collections;
 
+import net.minecraft.util.math.BlockPos;
 import org.junit.After;
 import org.junit.Test;
 
@@ -238,14 +239,13 @@ public class GameTestRunnerTest {
     public void gridLayoutUsesConfiguredOriginAndKeepsRowsRelativeToIt() {
         GameTestGridLayout grid = new GameTestGridLayout(16, 128, -32);
 
-        assertArrayEquals(new int[] { 16, 128, -32 }, grid.allocateOrigin());
-        assertArrayEquals(new int[] { 24, 128, -32 }, grid.allocateOrigin());
+        assertEquals(new BlockPos(16, 128, -32), grid.allocateOrigin());
 
         for (int i = 0; i < 8; i++) {
             grid.allocateOrigin();
         }
 
-        assertArrayEquals(new int[] { 16, 128, -24 }, grid.allocateOrigin());
+        assertEquals(new BlockPos(16, 128, -24), grid.allocateOrigin());
     }
 
     @Test

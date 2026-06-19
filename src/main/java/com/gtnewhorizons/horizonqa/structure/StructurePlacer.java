@@ -60,6 +60,27 @@ public final class StructurePlacer {
         return rotation == Rotation.CLOCKWISE_90 || rotation == Rotation.COUNTERCLOCKWISE_90 ? template.getSize().getX() : template.getSize().getZ();
     }
 
+    public static void validateVerticalBounds(String templateName, BlockPos origin, BlockPos size) throws TemplateException {
+        long maxY = (long) origin.getY() + size.getY() - 1L;
+        if (size.getY() <= 0 || origin.getY() < MIN_BUILD_Y || maxY > MAX_BUILD_Y) {
+            throw new TemplateException(
+                "Template '" + templateName
+                    + "' with height "
+                    + size.getY()
+                    + " at origin Y="
+                    + origin.getY()
+                    + " would occupy Y="
+                    + origin.getY()
+                    + ".."
+                    + maxY
+                    + ", outside build height "
+                    + MIN_BUILD_Y
+                    + ".."
+                    + MAX_BUILD_Y
+                    + ". Lower -Dhorizonqa.gridOrigin or use a shorter template.");
+        }
+    }
+
     private static int placedSizeX(int sizeX, int sizeZ, int rotation) {
         return (rotation & 1) == 0 ? sizeX : sizeZ;
     }

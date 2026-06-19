@@ -19,6 +19,7 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.PlayerNotFoundException;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
@@ -182,7 +183,7 @@ public class HorizonQACommand extends CommandBase {
             startReportedBatch(
                 sender,
                 Collections.singletonList(def),
-                EnumChatFormatting.GREEN + "Launched report batch: " + EnumChatFormatting.YELLOW + def.getTestId());
+                TextFormatting.GREEN + "Launched report batch: " + TextFormatting.YELLOW + def.getTestId());
             return;
         }
         if (rejectBatchRunning(sender)) return;
@@ -232,10 +233,10 @@ public class HorizonQACommand extends CommandBase {
             startReportedBatch(
                 sender,
                 tests,
-                EnumChatFormatting.GREEN + "Launched report batch with "
-                    + EnumChatFormatting.YELLOW
+                TextFormatting.GREEN + "Launched report batch with "
+                    + TextFormatting.YELLOW
                     + tests.size()
-                    + EnumChatFormatting.GREEN
+                    + TextFormatting.GREEN
                     + " test(s).");
             return;
         }
@@ -284,10 +285,10 @@ public class HorizonQACommand extends CommandBase {
             startReportedBatch(
                 sender,
                 defs,
-                EnumChatFormatting.GREEN + "Launched report batch with "
-                    + EnumChatFormatting.YELLOW
+                TextFormatting.GREEN + "Launched report batch with "
+                    + TextFormatting.YELLOW
                     + defs.size()
-                    + EnumChatFormatting.GREEN
+                    + TextFormatting.GREEN
                     + " failed test(s).");
             return;
         }
@@ -311,15 +312,15 @@ public class HorizonQACommand extends CommandBase {
 
     private void handleTeleport(ICommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Usage: /horizonqa tp <testId>"));
+            sender.sendMessage(new TextComponentString(TextFormatting.RED + "Usage: /horizonqa tp <testId>"));
             return;
         }
 
         EntityPlayer player = requirePlayer(sender);
         if (player == null) return;
         if (!(player instanceof EntityPlayerMP serverPlayer)) {
-            sender.addChatMessage(
-                new ChatComponentText(EnumChatFormatting.RED + "This command must be run by a server-side player."));
+            sender.sendMessage(
+                new TextComponentString(TextFormatting.RED + "This command must be run by a server-side player."));
             return;
         }
 
@@ -327,47 +328,49 @@ public class HorizonQACommand extends CommandBase {
             InteractiveTestSession.get()
                 .getKnownCells());
         if (cells.isEmpty()) {
-            sender.addChatMessage(
-                new ChatComponentText(EnumChatFormatting.RED + "No test cells found. Run /horizonqa runall first."));
+            sender.sendMessage(
+                new TextComponentString(TextFormatting.RED + "No test cells found. Run /horizonqa runall first."));
             return;
         }
 
         String testId = args[1];
         CellRecord cell = HorizonQACommandUtils.findTestById(testId, cells);
         if (cell == null) {
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.RED + "No placed test cell for '"
-                        + EnumChatFormatting.YELLOW
+            sender.sendMessage(
+                new TextComponentString(
+                    TextFormatting.RED + "No placed test cell for '"
+                        + TextFormatting.YELLOW
                         + testId
-                        + EnumChatFormatting.RED
+                        + TextFormatting.RED
                         + "'. Use tab completion after /horizonqa runall."));
             return;
         }
 
-        if (player.worldObj == null || player.worldObj.provider == null || player.worldObj.provider.dimensionId != 0) {
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.RED + "Test cells are in the overworld. Go to dimension 0 first."));
+        if (player.world == null || player.world.provider == null || player.world.provider.getDimension() != 0) {
+            sender.sendMessage(
+                new TextComponentString(
+                    TextFormatting.RED + "Test cells are in the overworld. Go to dimension 0 first."));
             return;
         }
 
-        double targetX = (cell.minX + cell.maxX + 1.0) * 0.5;
-        double targetY = cell.maxY + 2.0;
-        double targetZ = (cell.minZ + cell.maxZ + 1.0) * 0.5;
+        BlockPos min = cell.minPos();
+        BlockPos max = cell.maxPos();
+        double targetX = (min.getX() + max.getX() + 1.0) * 0.5;
+        double targetY = max.getY() + 2.0;
+        double targetZ = (min.getZ() + max.getZ() + 1.0) * 0.5;
 
-        if (serverPlayer.ridingEntity != null) {
-            serverPlayer.mountEntity(null);
+        if (serverPlayer.getRidingEntity() != null) {
+            serverPlayer.dismountRidingEntity();
         }
-        serverPlayer.playerNetServerHandler
+        serverPlayer.connection
             .setPlayerLocation(targetX, targetY, targetZ, player.rotationYaw, player.rotationPitch);
 
-        sender.addChatMessage(
-            new ChatComponentText(
-                EnumChatFormatting.GREEN + "Teleported to: " + EnumChatFormatting.YELLOW + cell.testId));
-        sender.addChatMessage(
-            new ChatComponentText(
-                EnumChatFormatting.GRAY + String.format("Cell target: (%.1f, %.1f, %.1f)", targetX, targetY, targetZ)));
+        sender.sendMessage(
+            new TextComponentString(
+                TextFormatting.GREEN + "Teleported to: " + TextFormatting.YELLOW + cell.testId()));
+        sender.sendMessage(
+            new TextComponentString(
+                TextFormatting.GRAY + String.format("Cell target: (%.1f, %.1f, %.1f)", targetX, targetY, targetZ)));
 
     }
 
@@ -411,7 +414,7 @@ public class HorizonQACommand extends CommandBase {
             reportBatchRunning = false;
             throw e;
         }
-        sender.addChatMessage(new ChatComponentText(launchedMessage));
+        sender.sendMessage(new TextComponentString(launchedMessage));
     }
 
     private static boolean preflightReportOutputs(ICommandSender sender) {
@@ -422,9 +425,9 @@ public class HorizonQACommand extends CommandBase {
             RunResult result = RunResult
                 .preRun(HorizonQAProperties.modeName(), toPropertyIssueResults(propertyIssues), reportFile.getPath());
             RunReportWriter.write(result, HorizonQAMod.LOG);
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.RED + "Reported-batch configuration is invalid; tests were not launched. "
+            sender.sendMessage(
+                new TextComponentString(
+                    TextFormatting.RED + "Reported-batch configuration is invalid; tests were not launched. "
                         + "Check the report files and server log for details."));
             return false;
         }
@@ -442,9 +445,9 @@ public class HorizonQACommand extends CommandBase {
         File reportFile = HorizonQAProperties.junitReportFile();
         RunResult result = RunResult.preRun(HorizonQAProperties.modeName(), reportPathIssues, reportFile.getPath());
         ConsoleReporter.report(result);
-        sender.addChatMessage(
-            new ChatComponentText(
-                EnumChatFormatting.RED + "Report path preflight failed; tests were not launched. "
+        sender.sendMessage(
+            new TextComponentString(
+                TextFormatting.RED + "Report path preflight failed; tests were not launched. "
                     + "Check the server log for details."));
         return false;
     }
@@ -467,9 +470,9 @@ public class HorizonQACommand extends CommandBase {
     }
 
     private static void reportBatchAlreadyRunning(ICommandSender sender) {
-        sender.addChatMessage(
-            new ChatComponentText(
-                EnumChatFormatting.RED + "A GameTest batch is already running. Wait for it to finish first."));
+        sender.sendMessage(
+            new TextComponentString(
+                TextFormatting.RED + "A GameTest batch is already running. Wait for it to finish first."));
     }
 
     private static boolean rejectBatchRunning(ICommandSender sender) {
@@ -484,9 +487,9 @@ public class HorizonQACommand extends CommandBase {
         if (HorizonQAProperties.interactiveFeaturesEnabled()) {
             return false;
         }
-        sender.addChatMessage(
-            new ChatComponentText(
-                EnumChatFormatting.RED + "That command is only available in interactive mode. "
+        sender.sendMessage(
+            new TextComponentString(
+                TextFormatting.RED + "That command is only available in interactive mode. "
                     + "Use "
                     + replacement
                     + " for reported batches."));
@@ -606,8 +609,8 @@ public class HorizonQACommand extends CommandBase {
                     .getKnownCells());
         }
         if (cell == null) {
-            sender.addChatMessage(
-                new ChatComponentText(EnumChatFormatting.RED + "No test cells found. Run /horizonqa runall first."));
+            sender.sendMessage(
+                new TextComponentString(TextFormatting.RED + "No test cells found. Run /horizonqa runall first."));
             return;
         }
         BlockPos relative = new BlockPos(
@@ -792,7 +795,7 @@ public class HorizonQACommand extends CommandBase {
         List<String> ids = new ArrayList<>();
         for (CellRecord cell : InteractiveTestSession.get()
             .getKnownCells()) {
-            ids.add(cell.testId);
+            ids.add(cell.testId());
         }
         ids.sort(String::compareTo);
         return ids.toArray(new String[0]);
@@ -800,8 +803,8 @@ public class HorizonQACommand extends CommandBase {
 
     private static EntityPlayer requirePlayer(ICommandSender sender) {
         if (!(sender instanceof EntityPlayer)) {
-            sender.addChatMessage(
-                new ChatComponentText(EnumChatFormatting.RED + "This command must be run by a player."));
+            sender.sendMessage(
+                new TextComponentString(TextFormatting.RED + "This command must be run by a player."));
             return null;
         }
         return (EntityPlayer) sender;

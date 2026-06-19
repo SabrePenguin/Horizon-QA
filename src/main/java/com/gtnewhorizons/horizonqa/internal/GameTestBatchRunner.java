@@ -361,7 +361,7 @@ public class GameTestBatchRunner {
         BlockPos cellMax = addPos(origin, size);
         try {
             if (template != null) {
-                StructurePlacer.validateVerticalBounds(def.getTemplateName(), origin[1], sizeY);
+                StructurePlacer.validateVerticalBounds(def.getTemplateName(), origin, size);
             }
             HorizonQAMod.CHUNK_LOADER
                 .forceChunksStrict(world, cellMin, cellMax);
