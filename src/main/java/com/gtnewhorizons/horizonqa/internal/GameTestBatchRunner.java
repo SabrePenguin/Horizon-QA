@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
@@ -31,9 +32,8 @@ import com.gtnewhorizons.horizonqa.HorizonQAProperties;
 import com.gtnewhorizons.horizonqa.api.event.StructurePlaced;
 import com.gtnewhorizons.horizonqa.internal.InvalidBatchHook.HookPhase;
 import com.gtnewhorizons.horizonqa.report.CaseResult;
-import com.gtnewhorizons.horizonqa.report.ConsoleReporter;
 import com.gtnewhorizons.horizonqa.report.IssueResult;
-import com.gtnewhorizons.horizonqa.report.JUnitXmlReporter;
+import com.gtnewhorizons.horizonqa.report.RunReportWriter;
 import com.gtnewhorizons.horizonqa.report.RunResult;
 import com.gtnewhorizons.horizonqa.report.StatusJsonReporter;
 import com.gtnewhorizons.horizonqa.structure.StructurePlacer;
@@ -46,37 +46,89 @@ public class GameTestBatchRunner {
         (Method m) -> m.getDeclaringClass()
             .getName())
         .thenComparing(Method::getName);
+    private static boolean batchRunning;
 
     private final List<Batch> batches;
     private final GameTestRunner runner;
     private final GameTestGridLayout grid;
     private final List<ResultEntry> resultEntries = new ArrayList<>();
     private final List<IssueResult> issues = new ArrayList<>();
+    private final Consumer<RunResult> onComplete;
 
     public GameTestBatchRunner(List<GameTestDefinition> tests, Map<String, List<Method>> beforeBatchMethods,
         Map<String, List<Method>> afterBatchMethods) {
-        this(tests, beforeBatchMethods, afterBatchMethods, Collections.emptyList());
+        this(tests, beforeBatchMethods, afterBatchMethods, Collections.emptyList(), null);
     }
 
     public GameTestBatchRunner(List<GameTestDefinition> tests, Map<String, List<Method>> beforeBatchMethods,
         Map<String, List<Method>> afterBatchMethods, List<IssueResult> issues) {
+        this(tests, beforeBatchMethods, afterBatchMethods, issues, null);
+    }
+
+    public GameTestBatchRunner(List<GameTestDefinition> tests, Map<String, List<Method>> beforeBatchMethods,
+        Map<String, List<Method>> afterBatchMethods, List<IssueResult> issues, Consumer<RunResult> onComplete) {
         runner = new GameTestRunner();
         grid = new GameTestGridLayout();
         batches = buildBatches(tests, beforeBatchMethods, afterBatchMethods);
+        this.onComplete = onComplete;
         if (issues != null) {
             this.issues.addAll(issues);
         }
     }
 
     public void start() {
-        runner.register();
-        if (batches.isEmpty()) {
-            onAllBatchesDone();
-            return;
+        if (!markBatchStarted()) {
+            throw new IllegalStateException("A GameTest batch is already running.");
         }
-        // Placement and getTileEntity are unreliable during FMLServerStartingEvent (before the first server
-        // tick). Defer until the world has ticked once, matching /gametest runAll during normal gameplay.
-        runner.scheduleOnFirstTick(() -> runBatch(0));
+        try {
+            runner.register();
+            if (batches.isEmpty()) {
+                onAllBatchesDone();
+                return;
+            }
+            // Placement and getTileEntity are unreliable during FMLServerStartingEvent (before the first server
+            // tick). Defer until the world has ticked once, matching /gametest runAll during normal gameplay.
+            runner.scheduleOnFirstTick(() -> runBatchSafely(0));
+        } catch (RuntimeException | Error e) {
+            runner.unregister();
+            markBatchFinished();
+            throw e;
+        }
+    }
+
+    public static synchronized boolean isBatchRunning() {
+        return batchRunning;
+    }
+
+    public static synchronized void resetBatchRunningState() {
+        batchRunning = false;
+    }
+
+    private static synchronized boolean markBatchStarted() {
+        if (batchRunning) {
+            return false;
+        }
+        batchRunning = true;
+        return true;
+    }
+
+    private static synchronized void markBatchFinished() {
+        batchRunning = false;
+    }
+
+    private void runBatchSafely(int idx) {
+        try {
+            runBatch(idx);
+        } catch (RuntimeException | Error e) {
+            cleanupAfterUnexpectedFailure();
+            throw e;
+        }
+    }
+
+    private void cleanupAfterUnexpectedFailure() {
+        runner.unregister();
+        HorizonQAMod.CHUNK_LOADER.releaseAll();
+        markBatchFinished();
     }
 
     private void runBatch(int idx) {
@@ -181,40 +233,32 @@ public class GameTestBatchRunner {
     }
 
     private void onAllBatchesDone() {
-        runner.unregister();
-        HorizonQAMod.CHUNK_LOADER.releaseAll();
-
-        File reportFile = HorizonQAProperties.junitReportFile();
-        RunResult result = RunResult
-            .completedCases(HorizonQAProperties.modeName(), collectCaseResults(), issues, reportFile.getPath());
-
+        RunResult result;
         try {
-            JUnitXmlReporter.write(result, reportFile);
-            LOG.info("JUnit XML report written to {}", reportFile.getAbsolutePath());
-        } catch (IOException e) {
-            LOG.error("Failed to write JUnit XML report: {}", e.getMessage());
-            result = result.withAdditionalIssue(IssueResult.reporting("junit", reportFile.getAbsolutePath(), e));
-        }
+            runner.unregister();
+            HorizonQAMod.CHUNK_LOADER.releaseAll();
 
-        File statusFile = HorizonQAProperties.statusReportFile();
-        try {
-            StatusJsonReporter.write(result, statusFile);
-            LOG.info("Status JSON report written to {}", statusFile.getAbsolutePath());
-        } catch (IOException e) {
-            LOG.error("Failed to write status JSON report: {}", e.getMessage());
-            result = result.withAdditionalIssue(IssueResult.reporting("status", statusFile.getAbsolutePath(), e));
-        }
+            File reportFile = HorizonQAProperties.junitReportFile();
+            result = RunResult
+                .completedCases(HorizonQAProperties.modeName(), collectCaseResults(), issues, reportFile.getPath());
 
-        if (HorizonQAProperties.isCi()) {
-            LOG.info(
-                "CI mode: exiting with code {} ({} required test failure/timeout(s), {} incomplete test(s), {} infrastructure issue(s)).",
-                result.exitCode(),
-                result.requiredFailures(),
-                result.incomplete(),
-                result.infrastructureErrors());
+            result = RunReportWriter.write(result, LOG);
+
+            if (HorizonQAProperties.stopServerAfterRun()) {
+                LOG.info(
+                    "Stopping server with code {} ({} required test failure/timeout(s), {} incomplete test(s), {} infrastructure issue(s)).",
+                    result.exitCode(),
+                    result.requiredFailures(),
+                    result.incomplete(),
+                    result.infrastructureErrors());
+            }
+            if (onComplete != null) {
+                onComplete.accept(result);
+            }
+        } finally {
+            markBatchFinished();
         }
-        ConsoleReporter.report(result);
-        if (HorizonQAProperties.isCi()) {
+        if (HorizonQAProperties.stopServerAfterRun()) {
             FMLCommonHandler.instance()
                 .exitJava(result.exitCode(), false);
         }
@@ -223,7 +267,7 @@ public class GameTestBatchRunner {
     private void runNextBatchOrFinish(int idx) {
         int next = idx + 1;
         if (next < batches.size()) {
-            runBatch(next);
+            runBatchSafely(next);
         } else {
             onAllBatchesDone();
         }
@@ -316,6 +360,9 @@ public class GameTestBatchRunner {
         BlockPos cellMin = origin;
         BlockPos cellMax = addPos(origin, size);
         try {
+            if (template != null) {
+                StructurePlacer.validateVerticalBounds(def.getTemplateName(), origin[1], sizeY);
+            }
             HorizonQAMod.CHUNK_LOADER
                 .forceChunksStrict(world, cellMin, cellMax);
         } catch (TemplateException e) {

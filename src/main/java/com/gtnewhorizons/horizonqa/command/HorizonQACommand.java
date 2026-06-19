@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -31,13 +32,22 @@ import net.minecraft.util.text.event.ClickEvent;
 import net.minecraft.world.WorldServer;
 
 import com.gtnewhorizons.horizonqa.HorizonQAMod;
+import com.gtnewhorizons.horizonqa.HorizonQAProperties;
+import com.gtnewhorizons.horizonqa.HorizonQAProperties.PropertyIssue;
 import com.gtnewhorizons.horizonqa.command.HorizonQACommandUtils.CellRecord;
 import com.gtnewhorizons.horizonqa.internal.DiscoveryIssue;
+import com.gtnewhorizons.horizonqa.internal.GameTestBatchRunner;
 import com.gtnewhorizons.horizonqa.internal.GameTestDefinition;
 import com.gtnewhorizons.horizonqa.internal.GameTestRegistry;
 import com.gtnewhorizons.horizonqa.internal.InteractiveTestSession;
 import com.gtnewhorizons.horizonqa.internal.InvalidTestDefinition;
 import com.gtnewhorizons.horizonqa.item.ItemHorizonWand;
+import com.gtnewhorizons.horizonqa.report.CaseResult;
+import com.gtnewhorizons.horizonqa.report.ConsoleReporter;
+import com.gtnewhorizons.horizonqa.report.IssueResult;
+import com.gtnewhorizons.horizonqa.report.ReportPathPreflight;
+import com.gtnewhorizons.horizonqa.report.RunReportWriter;
+import com.gtnewhorizons.horizonqa.report.RunResult;
 import com.gtnewhorizons.horizonqa.structure.StructureExporter;
 import net.minecraft.world.gen.structure.template.Template;
 import org.jetbrains.annotations.Nullable;
@@ -48,8 +58,10 @@ import javax.annotation.ParametersAreNonnullByDefault;
 @MethodsReturnNonnullByDefault
 public class HorizonQACommand extends CommandBase {
 
-    private static final String[] SUBCOMMANDS = { "run", "runall", "runfailed", "runthis", "runthat", "pos", "clearall",
-        "export", "clear" };
+    private static final String[] SUBCOMMANDS = { "run", "runall", "runfailed", "tp", "runthis", "runthat", "pos",
+        "clearall", "export", "clear" };
+    private static final Set<String> LAST_REPORTED_FAILED_IDS = new LinkedHashSet<>();
+    private static volatile boolean reportBatchRunning;
 
     @Override
     public String getName() {
@@ -58,7 +70,7 @@ public class HorizonQACommand extends CommandBase {
 
     @Override
     public String getUsage(ICommandSender sender) {
-        return "/horizonqa <run|runall|runfailed|runthis|runthat|pos|clearall|export|clear>";
+        return "/horizonqa <run|runall|runfailed|tp|runthis|runthat|pos|clearall|export|clear>";
     }
 
     @Override
@@ -86,6 +98,9 @@ public class HorizonQACommand extends CommandBase {
                 break;
             case "runfailed":
                 handleRunFailed(sender, args);
+                break;
+            case "tp":
+                handleTeleport(sender, args);
                 break;
             case "runthis":
                 handleRunThis(sender, args);
@@ -134,6 +149,9 @@ public class HorizonQACommand extends CommandBase {
                 }
                 return getListOfStringsMatchingLastWord(args, namespaces.toArray(new String[0]));
             }
+            if ("tp".equals(args[0])) {
+                return getListOfStringsMatchingLastWord(args, knownCellIds());
+            }
         }
         return Collections.emptyList();
     }
@@ -160,6 +178,14 @@ public class HorizonQACommand extends CommandBase {
                         + "'. Use /horizonqa runall to list available tests."));
             return;
         }
+        if (HorizonQAProperties.usesReportedCommandBatches()) {
+            startReportedBatch(
+                sender,
+                Collections.singletonList(def),
+                EnumChatFormatting.GREEN + "Launched report batch: " + EnumChatFormatting.YELLOW + def.getTestId());
+            return;
+        }
+        if (rejectBatchRunning(sender)) return;
         int launched = InteractiveTestSession.get()
             .launchTest(def);
         if (launched > 0) {
@@ -202,6 +228,18 @@ public class HorizonQACommand extends CommandBase {
                 return;
             }
         }
+        if (HorizonQAProperties.usesReportedCommandBatches()) {
+            startReportedBatch(
+                sender,
+                tests,
+                EnumChatFormatting.GREEN + "Launched report batch with "
+                    + EnumChatFormatting.YELLOW
+                    + tests.size()
+                    + EnumChatFormatting.GREEN
+                    + " test(s).");
+            return;
+        }
+        if (rejectBatchRunning(sender)) return;
         int launched = InteractiveTestSession.get()
             .launchTests(tests);
         if (launched > 0) {
@@ -220,8 +258,11 @@ public class HorizonQACommand extends CommandBase {
     }
 
     private void handleRunFailed(ICommandSender sender, String[] args) {
-        Set<String> failedIds = InteractiveTestSession.get()
-            .getFailedIds();
+        if (HorizonQAProperties.usesReportedCommandBatches() && reportBatchRunning) {
+            reportBatchAlreadyRunning(sender);
+            return;
+        }
+        Set<String> failedIds = failedIdsForCurrentMode();
         if (failedIds.isEmpty()) {
             sender.sendMessage(new TextComponentString(TextFormatting.GREEN + "No failed tests to re-run."));
             return;
@@ -239,6 +280,18 @@ public class HorizonQACommand extends CommandBase {
                         + "were they unloaded?"));
             return;
         }
+        if (HorizonQAProperties.usesReportedCommandBatches()) {
+            startReportedBatch(
+                sender,
+                defs,
+                EnumChatFormatting.GREEN + "Launched report batch with "
+                    + EnumChatFormatting.YELLOW
+                    + defs.size()
+                    + EnumChatFormatting.GREEN
+                    + " failed test(s).");
+            return;
+        }
+        if (rejectBatchRunning(sender)) return;
         int launched = InteractiveTestSession.get()
             .launchTests(defs);
         if (launched > 0) {
@@ -256,7 +309,212 @@ public class HorizonQACommand extends CommandBase {
         }
     }
 
+    private void handleTeleport(ICommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Usage: /horizonqa tp <testId>"));
+            return;
+        }
+
+        EntityPlayer player = requirePlayer(sender);
+        if (player == null) return;
+        if (!(player instanceof EntityPlayerMP serverPlayer)) {
+            sender.addChatMessage(
+                new ChatComponentText(EnumChatFormatting.RED + "This command must be run by a server-side player."));
+            return;
+        }
+
+        List<CellRecord> cells = new ArrayList<>(
+            InteractiveTestSession.get()
+                .getKnownCells());
+        if (cells.isEmpty()) {
+            sender.addChatMessage(
+                new ChatComponentText(EnumChatFormatting.RED + "No test cells found. Run /horizonqa runall first."));
+            return;
+        }
+
+        String testId = args[1];
+        CellRecord cell = HorizonQACommandUtils.findTestById(testId, cells);
+        if (cell == null) {
+            sender.addChatMessage(
+                new ChatComponentText(
+                    EnumChatFormatting.RED + "No placed test cell for '"
+                        + EnumChatFormatting.YELLOW
+                        + testId
+                        + EnumChatFormatting.RED
+                        + "'. Use tab completion after /horizonqa runall."));
+            return;
+        }
+
+        if (player.worldObj == null || player.worldObj.provider == null || player.worldObj.provider.dimensionId != 0) {
+            sender.addChatMessage(
+                new ChatComponentText(
+                    EnumChatFormatting.RED + "Test cells are in the overworld. Go to dimension 0 first."));
+            return;
+        }
+
+        double targetX = (cell.minX + cell.maxX + 1.0) * 0.5;
+        double targetY = cell.maxY + 2.0;
+        double targetZ = (cell.minZ + cell.maxZ + 1.0) * 0.5;
+
+        if (serverPlayer.ridingEntity != null) {
+            serverPlayer.mountEntity(null);
+        }
+        serverPlayer.playerNetServerHandler
+            .setPlayerLocation(targetX, targetY, targetZ, player.rotationYaw, player.rotationPitch);
+
+        sender.addChatMessage(
+            new ChatComponentText(
+                EnumChatFormatting.GREEN + "Teleported to: " + EnumChatFormatting.YELLOW + cell.testId));
+        sender.addChatMessage(
+            new ChatComponentText(
+                EnumChatFormatting.GRAY + String.format("Cell target: (%.1f, %.1f, %.1f)", targetX, targetY, targetZ)));
+
+    }
+
+    private static Set<String> failedIdsForCurrentMode() {
+        if (!HorizonQAProperties.usesReportedCommandBatches()) {
+            return InteractiveTestSession.get()
+                .getFailedIds();
+        }
+        return new LinkedHashSet<>(LAST_REPORTED_FAILED_IDS);
+    }
+
+    private static void startReportedBatch(ICommandSender sender, List<GameTestDefinition> tests,
+        String launchedMessage) {
+        if (reportBatchRunning || GameTestBatchRunner.isBatchRunning()) {
+            reportBatchAlreadyRunning(sender);
+            return;
+        }
+        if (!preflightReportOutputs(sender)) {
+            return;
+        }
+        try {
+            GameTestBatchRunner batchRunner = new GameTestBatchRunner(
+                tests,
+                GameTestRegistry.getBeforeBatchMethods(),
+                GameTestRegistry.getAfterBatchMethods(),
+                Collections.emptyList(),
+                result -> {
+                    try {
+                        rememberReportedBatchResult(result);
+                    } finally {
+                        reportBatchRunning = false;
+                    }
+                });
+            reportBatchRunning = true;
+            batchRunner.start();
+        } catch (IllegalStateException e) {
+            reportBatchRunning = false;
+            reportBatchAlreadyRunning(sender);
+            return;
+        } catch (RuntimeException | Error e) {
+            reportBatchRunning = false;
+            throw e;
+        }
+        sender.addChatMessage(new ChatComponentText(launchedMessage));
+    }
+
+    private static boolean preflightReportOutputs(ICommandSender sender) {
+        List<PropertyIssue> propertyIssues = HorizonQAProperties.reportInfrastructureIssues();
+        if (!propertyIssues.isEmpty()) {
+            logPropertyIssues(propertyIssues);
+            File reportFile = HorizonQAProperties.junitReportFile();
+            RunResult result = RunResult
+                .preRun(HorizonQAProperties.modeName(), toPropertyIssueResults(propertyIssues), reportFile.getPath());
+            RunReportWriter.write(result, HorizonQAMod.LOG);
+            sender.addChatMessage(
+                new ChatComponentText(
+                    EnumChatFormatting.RED + "Reported-batch configuration is invalid; tests were not launched. "
+                        + "Check the report files and server log for details."));
+            return false;
+        }
+
+        List<IssueResult> reportPathIssues = ReportPathPreflight
+            .check(HorizonQAProperties.junitReportFile(), HorizonQAProperties.statusReportFile());
+        if (reportPathIssues.isEmpty()) {
+            return true;
+        }
+
+        HorizonQAMod.LOG.error("Report path preflight failed; reported batch was not launched.");
+        for (IssueResult issue : reportPathIssues) {
+            HorizonQAMod.LOG.error("Infrastructure issue [{}] {}: {}", issue.id(), issue.name(), issue.message());
+        }
+        File reportFile = HorizonQAProperties.junitReportFile();
+        RunResult result = RunResult.preRun(HorizonQAProperties.modeName(), reportPathIssues, reportFile.getPath());
+        ConsoleReporter.report(result);
+        sender.addChatMessage(
+            new ChatComponentText(
+                EnumChatFormatting.RED + "Report path preflight failed; tests were not launched. "
+                    + "Check the server log for details."));
+        return false;
+    }
+
+    public static void rememberReportedBatchResult(RunResult result) {
+        LAST_REPORTED_FAILED_IDS.clear();
+        if (result == null) {
+            return;
+        }
+        for (CaseResult resultCase : result.cases()) {
+            if (resultCase.failed() || resultCase.timedOut() || resultCase.error()) {
+                LAST_REPORTED_FAILED_IDS.add(resultCase.id());
+            }
+        }
+    }
+
+    public static void resetReportBatchState() {
+        reportBatchRunning = false;
+        LAST_REPORTED_FAILED_IDS.clear();
+    }
+
+    private static void reportBatchAlreadyRunning(ICommandSender sender) {
+        sender.addChatMessage(
+            new ChatComponentText(
+                EnumChatFormatting.RED + "A GameTest batch is already running. Wait for it to finish first."));
+    }
+
+    private static boolean rejectBatchRunning(ICommandSender sender) {
+        if (!GameTestBatchRunner.isBatchRunning()) {
+            return false;
+        }
+        reportBatchAlreadyRunning(sender);
+        return true;
+    }
+
+    private static boolean rejectInteractiveOnlyInNonInteractiveMode(ICommandSender sender, String replacement) {
+        if (HorizonQAProperties.interactiveFeaturesEnabled()) {
+            return false;
+        }
+        sender.addChatMessage(
+            new ChatComponentText(
+                EnumChatFormatting.RED + "That command is only available in interactive mode. "
+                    + "Use "
+                    + replacement
+                    + " for reported batches."));
+        return true;
+    }
+
+    private static void logPropertyIssues(List<PropertyIssue> issues) {
+        for (PropertyIssue issue : issues) {
+            HorizonQAMod.LOG.error(
+                "Infrastructure issue [{}] {} in {}: {}",
+                issue.id(),
+                issue.kind(),
+                issue.property(),
+                issue.message());
+        }
+    }
+
+    private static List<IssueResult> toPropertyIssueResults(List<PropertyIssue> issues) {
+        List<IssueResult> results = new ArrayList<>();
+        for (PropertyIssue issue : issues) {
+            results.add(IssueResult.property(issue));
+        }
+        return results;
+    }
+
     private void handleRunThis(ICommandSender sender, String[] args) {
+        if (rejectInteractiveOnlyInNonInteractiveMode(sender, "/horizonqa run <testId>")) return;
+        if (rejectBatchRunning(sender)) return;
         EntityPlayer player;
         try {
             player = getCommandSenderAsPlayer(sender);
@@ -280,6 +538,8 @@ public class HorizonQACommand extends CommandBase {
     }
 
     private void handleRunThat(ICommandSender sender, String[] args) {
+        if (rejectInteractiveOnlyInNonInteractiveMode(sender, "/horizonqa run <testId>")) return;
+        if (rejectBatchRunning(sender)) return;
         EntityPlayer player;
         try {
             player = getCommandSenderAsPlayer(sender);
@@ -326,6 +586,7 @@ public class HorizonQACommand extends CommandBase {
     }
 
     private void handlePos(ICommandSender sender, String[] args) {
+        if (rejectInteractiveOnlyInNonInteractiveMode(sender, "/horizonqa run <testId>")) return;
         EntityPlayer player;
         try {
             player = getCommandSenderAsPlayer(sender);
@@ -345,8 +606,8 @@ public class HorizonQACommand extends CommandBase {
                     .getKnownCells());
         }
         if (cell == null) {
-            sender.sendMessage(
-                new TextComponentString(TextFormatting.RED + "No test cells found. Run /horizonqa runall first."));
+            sender.addChatMessage(
+                new ChatComponentText(EnumChatFormatting.RED + "No test cells found. Run /horizonqa runall first."));
             return;
         }
         BlockPos relative = new BlockPos(
@@ -377,6 +638,8 @@ public class HorizonQACommand extends CommandBase {
     }
 
     private void handleClearAll(ICommandSender sender, String[] args) {
+        if (rejectInteractiveOnlyInNonInteractiveMode(sender, "/horizonqa runall")) return;
+        if (rejectBatchRunning(sender)) return;
         int count = InteractiveTestSession.get()
             .getKnownCells()
             .size();
@@ -523,6 +786,25 @@ public class HorizonQACommand extends CommandBase {
                 .equals(testId)) return invalidTest;
         }
         return null;
+    }
+
+    private static String[] knownCellIds() {
+        List<String> ids = new ArrayList<>();
+        for (CellRecord cell : InteractiveTestSession.get()
+            .getKnownCells()) {
+            ids.add(cell.testId);
+        }
+        ids.sort(String::compareTo);
+        return ids.toArray(new String[0]);
+    }
+
+    private static EntityPlayer requirePlayer(ICommandSender sender) {
+        if (!(sender instanceof EntityPlayer)) {
+            sender.addChatMessage(
+                new ChatComponentText(EnumChatFormatting.RED + "This command must be run by a player."));
+            return null;
+        }
+        return (EntityPlayer) sender;
     }
 
     @SuppressWarnings("ConstantConditions")

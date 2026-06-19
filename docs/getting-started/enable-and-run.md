@@ -24,16 +24,24 @@ Set `horizonqa.mode` on the **server** JVM when you need a mode other than the d
 
 `ci` enables the deterministic headless path:
 
-- The dedicated **GameTest** world type is registered.
+- The dedicated **GameTest** void world type is used by default.
 - ASM-based discovery runs across every `@GameTestHolder` class on the classpath.
 - Selected tests run automatically.
 - `TEST-horizonqa.xml` and `horizonqa-result.json` are written before the server exits.
 
 `off` loads the mod but disables commands, discovery, runner behavior, and test visuals.
 
+Modes are presets. You can override the main runtime choices without adding another mode:
+
+```text
+./gradlew runServer --mcJvmArgs="-Dhorizonqa.mode=ci -Dhorizonqa.world=normal -Dhorizonqa.stopServer=false"
+./gradlew runServer --mcJvmArgs="-Dhorizonqa.mode=ci -Dhorizonqa.autoRun=false"
+./gradlew runServer --mcJvmArgs="-Dhorizonqa.mode=ci -Dhorizonqa.autoRun=false -Dhorizonqa.world=normal -Dhorizonqa.gridOrigin=0,128,0"
+```
+
 !!! tip "Pick the mode for the job"
 
-    Use the default `interactive` mode for local authoring and `ci` for automated server runs.
+    Use the default `interactive` mode for local authoring, `ci` for automated server runs, and `ci` with `-Dhorizonqa.autoRun=false` when you want report files from a manually-started batch.
 
 ## Run the examples
 
@@ -61,7 +69,7 @@ In-game (operator permission level **2**):
 | `/horizonqa runfailed`          | Re-run only the tests that failed in the last batch                     |
 | `/qa`                           | Alias for `/horizonqa`                                                  |
 
-After a batch completes, the server writes **`TEST-horizonqa.xml`** and **`horizonqa-result.json`** in the working directory unless report paths are overridden. See [CI & JUnit reports](../guide/ci.md).
+In `ci` mode with `-Dhorizonqa.autoRun=false`, `/horizonqa run`, `/horizonqa runall`, and `/horizonqa runfailed` write **`TEST-horizonqa.xml`** and **`horizonqa-result.json`** after the batch completes. The files are written in the working directory unless report paths are overridden. See [CI & JUnit reports](../guide/ci.md).
 
 ## Horizon Wand
 
@@ -77,12 +85,13 @@ Move the exported files into `src/main/resources/assets/<modid>/horizonqastructu
 
 After `/horizonqa runall`, failed cells **stay placed** on the grid with their overlays. These commands are designed for the in-world triage loop:
 
-| Command               | Purpose                                                                                |
-|-----------------------|----------------------------------------------------------------------------------------|
-| `/horizonqa pos`      | Print world + test-relative coordinates; suggest `helper.absolute(x, y, z)`            |
-| `/horizonqa runthis`  | Re-run the test cell you are looking at                                                |
-| `/horizonqa runthat`  | Re-run the nearest test cell                                                           |
-| `/horizonqa clearall` | Remove placed test cells and overlays                                                  |
+| Command                  | Purpose                                                                     |
+|--------------------------|-----------------------------------------------------------------------------|
+| `/horizonqa tp <testId>` | Teleport to the placed cell for a specific test id                          |
+| `/horizonqa pos`         | Print world + test-relative coordinates; suggest `helper.absolute(x, y, z)` |
+| `/horizonqa runthis`     | Re-run the test cell you are standing inside                                |
+| `/horizonqa runthat`     | Re-run the test cell you are looking at                                     |
+| `/horizonqa clearall`    | Remove placed test cells and overlays                                       |
 
 !!! tip "Iterate without restarting"
 

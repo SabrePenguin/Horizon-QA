@@ -16,6 +16,8 @@ public final class StructurePlacer {
 
     private static final Logger LOG = LogManager.getLogger("GameTest");
     private static final TileEntityNbtRotator NO_TILE_ENTITY_NBT_ROTATION = (nbt, rotation) -> {};
+    private static final int MIN_BUILD_Y = 0;
+    private static final int MAX_BUILD_Y = 255;
 
     private StructurePlacer() {}
 

@@ -17,8 +17,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 
-import net.minecraft.world.gen.structure.template.Template;
-import net.minecraftforge.fml.common.FMLCommonHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -73,10 +71,14 @@ public class InteractiveTestSession {
 
     public int launchTests(List<GameTestDefinition> defs) {
         if (defs.isEmpty()) return 0;
+        if (isBatchRunnerActive()) return 0;
         WorldServer world = getOverworld();
         if (world == null) return 0;
 
         List<PlannedTest> planned = planTests(defs);
+        if (planned.isEmpty()) {
+            return 0;
+        }
         if (!forcePlannedArea(world, planned)) {
             return 0;
         }
@@ -87,11 +89,12 @@ public class InteractiveTestSession {
             runner.addInstance(inst);
             LOG.info("[GameTest] Launched '{}' at {}.", plannedTest.def.getTestId(), plannedTest.origin);
         }
-        LOG.info("[GameTest] Launched {} test(s) total.", defs.size());
+        LOG.info("[GameTest] Launched {} test(s) total.", planned.size());
         return planned.size();
     }
 
     public boolean relaunchAtCell(GameTestDefinition def) {
+        if (isBatchRunnerActive()) return false;
         WorldServer world = getOverworld();
         if (world == null) return false;
 
@@ -101,6 +104,9 @@ public class InteractiveTestSession {
         }
 
         PlannedTest plannedTest = planTestAt(def, existing.origin());
+        if (plannedTest == null) {
+            return false;
+        }
         if (!forcePlannedArea(world, Collections.singletonList(plannedTest))) {
             return false;
         }
@@ -116,6 +122,7 @@ public class InteractiveTestSession {
     }
 
     public void clearAll() {
+        if (isBatchRunnerActive()) return;
         WorldServer world = getOverworld();
         int cleared = 0;
         if (world != null) {
@@ -130,6 +137,14 @@ public class InteractiveTestSession {
         grid.reset();
         if (onClearAllCallback != null) onClearAllCallback.run();
         LOG.info("[GameTest] Cleared {} test cell(s).", cleared);
+    }
+
+    private static boolean isBatchRunnerActive() {
+        if (!GameTestBatchRunner.isBatchRunning()) {
+            return false;
+        }
+        LOG.warn("[GameTest] Interactive test session is unavailable while a GameTest batch is running.");
+        return true;
     }
 
     public void refreshFailedIds() {
@@ -164,7 +179,10 @@ public class InteractiveTestSession {
             int sizeX = template != null ? StructurePlacer.placedSizeX(template, def.getRotation()) : 0;
             int sizeZ = template != null ? StructurePlacer.placedSizeZ(template, def.getRotation()) : 0;
             BlockPos origin = grid.allocateOrigin(sizeX, sizeZ);
-            planned.add(planTestAt(def, origin, template));
+            PlannedTest plannedTest = planTestAt(def, origin, template);
+            if (plannedTest != null) {
+                planned.add(plannedTest);
+            }
         }
         return planned;
     }
@@ -183,6 +201,19 @@ public class InteractiveTestSession {
         );
 
         BlockPos cellMin = origin;
+
+        if (template != null) {
+            try {
+                StructurePlacer.validateVerticalBounds(def.getTemplateName(), originY, sizeY);
+            } catch (TemplateException e) {
+                LOG.error(
+                    "[GameTest] Cannot place interactive test '{}' at ({}, {}, {}): {}",
+                    def.getTestId(),
+                    origin,
+                    e.getMessage());
+                return null;
+            }
+        }
 
         BlockPos cellMax = new BlockPos(
             origin.getX() + cellSize.getX() - 1,
@@ -233,6 +264,7 @@ public class InteractiveTestSession {
             return false;
         }
     }
+
     private GameTestInstance spawnPlannedTest(PlannedTest plannedTest, WorldServer world) {
         GameTestDefinition def = plannedTest.def;
         Template template = plannedTest.template;

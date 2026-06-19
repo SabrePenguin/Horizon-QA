@@ -6,9 +6,11 @@ import static org.junit.Assert.assertTrue;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.minecraft.command.ICommandSender;
 import net.minecraft.server.MinecraftServer;
@@ -24,19 +26,25 @@ import org.junit.After;
 import org.junit.Test;
 
 import com.gtnewhorizons.horizonqa.api.GameTestHelper;
+import com.gtnewhorizons.horizonqa.command.HorizonQACommandUtils.CellRecord;
 import com.gtnewhorizons.horizonqa.internal.DiscoveryIssue;
 import com.gtnewhorizons.horizonqa.internal.DiscoveryResult;
 import com.gtnewhorizons.horizonqa.internal.DuplicateTestId;
 import com.gtnewhorizons.horizonqa.internal.GameTestDefinition;
 import com.gtnewhorizons.horizonqa.internal.GameTestRegistry;
+import com.gtnewhorizons.horizonqa.internal.InteractiveTestSession;
 import com.gtnewhorizons.horizonqa.internal.InvalidBatchHook;
 import com.gtnewhorizons.horizonqa.internal.InvalidTestDefinition;
+import com.gtnewhorizons.horizonqa.report.CaseResult;
+import com.gtnewhorizons.horizonqa.report.RunResult;
 
 public class HorizonQACommandTest {
 
     @After
     public void clearRegistry() throws Exception {
         seedRegistry(Collections.emptyList(), Collections.emptyList());
+        InteractiveTestSession.reset();
+        HorizonQACommand.resetReportBatchState();
     }
 
     @Test
@@ -59,6 +67,23 @@ public class HorizonQACommandTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void teleportTabCompletionListsOnlyPlacedCells() throws Exception {
+        seedRegistry(
+            Arrays.asList(definition("good:Suite.placed"), definition("good:Suite.notPlaced")),
+            Collections.emptyList());
+        Map<String, CellRecord> knownCells = (Map<String, CellRecord>) sessionField("knownCells")
+            .get(InteractiveTestSession.get());
+        knownCells.put("good:Suite.placed", new CellRecord("good:Suite.placed", 0, 64, 0, 0, 64, 0, 4, 68, 4));
+
+        List<String> completions = new HorizonQACommand()
+            .addTabCompletionOptions(new RecordingSender(), new String[] { "tp", "" });
+
+        assertTrue(completions.contains("good:Suite.placed"));
+        assertFalse(completions.contains("good:Suite.notPlaced"));
+    }
+
+    @Test
     public void runKnownInvalidTestReportsInvalidInsteadOfUnknown() throws Exception {
         String invalidId = "bad:Broken.invalid";
         seedRegistry(
@@ -76,6 +101,28 @@ public class HorizonQACommandTest {
         assertFalse(messages.contains("Unknown test"));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void rememberedReportedBatchResultKeepsFailedIdsForRunfailed() throws Exception {
+        RunResult result = RunResult.completedCases(
+            "ci",
+            Arrays.asList(
+                caseResult("mod:Suite.passed", CaseResult.Status.PASSED),
+                caseResult("mod:Suite.failed", CaseResult.Status.FAILED),
+                caseResult("mod:Suite.timedOut", CaseResult.Status.TIMED_OUT),
+                caseResult("mod:Suite.error", CaseResult.Status.ERROR)),
+            Collections.emptyList(),
+            "TEST.xml");
+
+        HorizonQACommand.rememberReportedBatchResult(result);
+
+        Set<String> failedIds = (Set<String>) commandField("LAST_REPORTED_FAILED_IDS").get(null);
+        assertFalse(failedIds.contains("mod:Suite.passed"));
+        assertTrue(failedIds.contains("mod:Suite.failed"));
+        assertTrue(failedIds.contains("mod:Suite.timedOut"));
+        assertTrue(failedIds.contains("mod:Suite.error"));
+    }
+
     private static GameTestDefinition definition(String testId) throws Exception {
         return new GameTestDefinition(testId, dummyMethod(), "", 20, "", true, Rotation.NONE);
     }
@@ -86,6 +133,14 @@ public class HorizonQACommandTest {
             "DISCOVERY_ERROR",
             "Skipping @GameTest method 'invalid' in 'DummyTests': must be public static.");
         return new InvalidTestDefinition(testId, dummyMethod(), Collections.singletonList(issue));
+    }
+
+    private static CaseResult caseResult(String testId, CaseResult.Status status) {
+        int colon = testId.indexOf(':');
+        int dot = testId.lastIndexOf('.');
+        String classname = dot > colon ? testId.substring(0, dot) : testId;
+        String name = dot >= 0 && dot < testId.length() - 1 ? testId.substring(dot + 1) : testId;
+        return new CaseResult(testId, classname, name, status, true, 0, 0.0, "", "", "", Collections.emptyList());
     }
 
     private static Method dummyMethod() throws Exception {
@@ -117,6 +172,18 @@ public class HorizonQACommandTest {
 
     private static Field field(String name) throws Exception {
         Field field = GameTestRegistry.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return field;
+    }
+
+    private static Field commandField(String name) throws Exception {
+        Field field = HorizonQACommand.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return field;
+    }
+
+    private static Field sessionField(String name) throws Exception {
+        Field field = InteractiveTestSession.class.getDeclaredField(name);
         field.setAccessible(true);
         return field;
     }
