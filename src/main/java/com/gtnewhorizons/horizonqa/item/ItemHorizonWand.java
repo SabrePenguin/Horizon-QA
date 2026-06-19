@@ -52,8 +52,8 @@ public class ItemHorizonWand extends Item {
     }
 
     @Override
-    public EnumActionResult onItemUse(EntityPlayer player, World world, BlockPos pos, EnumHand hand, EnumFacing facing,
-        float hitX, float hitY, float hitZ) {
+    public EnumActionResult onItemUseFirst(EntityPlayer player, World world, BlockPos pos, EnumFacing facing,
+                                           float hitX, float hitY, float hitZ, EnumHand hand) {
         if (!world.isRemote) {
             BlockPos target = player.isSneaking() ? pos.offset(facing) : pos;
             ItemStack heldItem = player.getHeldItem(hand);
