@@ -1,6 +1,10 @@
-# Horizon QA
+# Horizonless QA
 
-Horizon QA is an end-to-end testing framework for GTNH. It implements the modern Minecraft GameTest API on 1.7.10, providing a specialized environment to validate multiblocks, machine logic, and logistics.
+Horizonless QA is a fork of GTNH's Horizon QA, and is an end-to-end testing framework for 1.12.2. It uses Horizon QA's
+implementation of the modern Minecraft GameTest API for 1.7.10, providing an environment to validate logic and logistics.
+Any references to Horizon QA can be understood to primarily apply to Horizonless QA, as I try to keep up-to-date with
+Horizon QA. However, any and all issues with the 1.12.2 version **must** report here instead, as there are significant
+differences internally.
 
 **📖 Documentation: <https://GTNewHorizons.github.io/Horizon-QA/>** with getting started, guides, the full command/property reference, and [Javadoc](https://GTNewHorizons.github.io/Horizon-QA/javadoc/index.html). This README is a summary; the website is the canonical documentation.
 
