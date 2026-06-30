@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
 
     steps:
       - name: checkout
@@ -31,6 +32,12 @@ jobs:
 
       - name: Build
         run: ./gradlew build
+
+      - name: Maven Publish
+        env:
+          MAVEN_USER: ${{ github.actor }}
+          MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew publish
 
       - name: Publish
         uses: Kir-Antipov/mc-publish@v3.3
