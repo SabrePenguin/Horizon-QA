@@ -37,6 +37,7 @@ jobs:
         env:
           MAVEN_USER: ${{ github.actor }}
           MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_ID: horizonless-qa
         run: ./gradlew publish
 
       - name: Publish

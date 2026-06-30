@@ -39,6 +39,6 @@ public class HorizonQALoadingPlugin implements IFMLLoadingPlugin, IEarlyMixinLoa
 
     @Override
     public List<String> getMixinConfigs() {
-        return Collections.singletonList("mixins.horizonqa.json");
+        return Collections.singletonList("mixins.horizonlessqa.json");
     }
 }
