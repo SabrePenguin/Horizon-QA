@@ -35,7 +35,7 @@ public class CommonProxy {
         Config.synchronizeConfiguration(event.getSuggestedConfigurationFile());
 
         HorizonQAMod.LOG.info(Config.greeting);
-        HorizonQAMod.LOG.info("I am " + HorizonQAMod.NAME + " at version " + Tags.VERSION);
+        HorizonQAMod.LOG.info("I am " + Tags.MODNAME + " at version " + Tags.VERSION);
         HorizonQAMod.LOG.info("Mode (-D{}): {}", HorizonQAProperties.MODE_PROPERTY, HorizonQAProperties.modeName());
         HorizonQAMod.LOG.info(
             "Resolved Horizon-QA behavior: world={}, autoRun={}, stopServer={}, gridOrigin={}, interactiveFeatures={}",

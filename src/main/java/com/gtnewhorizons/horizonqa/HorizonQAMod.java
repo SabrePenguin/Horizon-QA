@@ -16,21 +16,19 @@ import org.apache.logging.log4j.Logger;
 import com.gtnewhorizons.horizonqa.internal.GameTestChunkLoader;
 
 @Mod(
-    modid = HorizonQAMod.MODID,
+    modid = Tags.MODID,
     version = Tags.VERSION,
-    name = HorizonQAMod.NAME,
+    name = Tags.MODNAME,
     acceptedMinecraftVersions = "[1.12.2]")
 public class HorizonQAMod {
 
-    public static final String MODID = "horizonqa";
-    public static final String NAME = "Horizon QA";
-    public static final Logger LOG = LogManager.getLogger(MODID);
+    public static final Logger LOG = LogManager.getLogger(Tags.MODID);
 
 
     public static final int VOID_WORLD_ID = 327;
     public static DimensionType type;
 
-    @Mod.Instance(HorizonQAMod.MODID)
+    @Mod.Instance(Tags.MODID)
     public static HorizonQAMod instance;
 
     public static final GameTestChunkLoader CHUNK_LOADER = new GameTestChunkLoader();
